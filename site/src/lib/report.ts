@@ -1,4 +1,4 @@
-import type { BenchmarkMetricKey, BenchmarkProfile, BenchmarkResult, BenchmarkTimeseriesPoint } from "./types";
+import type { BenchmarkMetricKey, BenchmarkProfile, BenchmarkProvider, BenchmarkResult, BenchmarkTimeseriesPoint } from "./types";
 
 function parseDisplayDate(value: string): Date | null {
   const date = new Date(value);
@@ -81,6 +81,32 @@ export function providerResultsForProfile(
       if (leftValue !== rightValue) return rightValue - leftValue;
       return left.provider.localeCompare(right.provider);
     });
+}
+
+function providerRecord(providers: BenchmarkProvider[], provider: string): BenchmarkProvider | undefined {
+  return providers.find((entry) => entry.provider === provider);
+}
+
+function adapterFailed(provider: BenchmarkProvider | undefined): boolean {
+  return Boolean(provider?.adapter_status && provider.adapter_status !== "completed");
+}
+
+export function providerResultStatusLabel(result: BenchmarkResult, providers: BenchmarkProvider[]): string {
+  const provider = providerRecord(providers, result.provider);
+  if (adapterFailed(provider)) return `adapter ${provider?.adapter_status}`;
+  return `${result.operation || "Profile"} · ${result.status || "unknown"}`;
+}
+
+export function providerResultMeta(result: BenchmarkResult, providers: BenchmarkProvider[]): string[] {
+  const provider = providerRecord(providers, result.provider);
+  if (adapterFailed(provider)) {
+    const fields = [];
+    if (provider?.endpoint) fields.push(provider.endpoint);
+    const startupSeconds = Number(provider?.startup_seconds);
+    if (Number.isFinite(startupSeconds)) fields.push(`${startupSeconds.toFixed(1)}s startup`);
+    return fields.length ? fields : [`adapter ${provider?.adapter_status}`];
+  }
+  return [formatOps(result.ops_per_sec), `${formatErrors(result.errors)} errors`, `${Number(result.duration_seconds || 0).toFixed(1)}s`];
 }
 
 export function providerColor(provider: string): string {

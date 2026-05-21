@@ -42,6 +42,8 @@ const {
   formatOps,
   formatThroughput,
   profilesForWorkload,
+  providerResultMeta,
+  providerResultStatusLabel,
   providerResultsForProfile,
   workloadsFromResults,
 } = require(path.join(outDir, "report.js"));
@@ -102,6 +104,36 @@ test("sorts provider results by selected metric descending", () => {
     providerResultsForProfile(results, "put-small-c01-prefix", "throughput_mib_per_sec").map((row) => row.provider),
     ["rustfs", "ozone"],
   );
+});
+
+test("labels adapter failures separately from profile failures", () => {
+  const providers = [
+    { provider: "ozone", label: "Apache Ozone", adapter_status: "failed", endpoint: "127.0.0.1:9878", startup_seconds: 460 },
+    { provider: "rustfs", label: "RustFS", adapter_status: "completed", endpoint: "127.0.0.1:9000", startup_seconds: 6 },
+  ];
+  const failedResult = {
+    provider: "ozone",
+    profile_id: "get-small-c01-prefix",
+    workload: "get",
+    operation: "GET",
+    status: "failed",
+    duration_seconds: 0,
+  };
+  const completedResult = {
+    provider: "rustfs",
+    profile_id: "get-small-c01-prefix",
+    workload: "get",
+    operation: "GET",
+    status: "completed",
+    ops_per_sec: 890.15,
+    errors: 0,
+    duration_seconds: 2,
+  };
+
+  assert.equal(providerResultStatusLabel(failedResult, providers), "adapter failed");
+  assert.deepEqual(providerResultMeta(failedResult, providers), ["127.0.0.1:9878", "460.0s startup"]);
+  assert.equal(providerResultStatusLabel(completedResult, providers), "GET · completed");
+  assert.deepEqual(providerResultMeta(completedResult, providers), ["890.15 ops/s", "0 errors", "2.0s"]);
 });
 
 test("normalizes Parquet catalog and run rows", () => {

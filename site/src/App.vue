@@ -5,11 +5,12 @@ import { createDuckDbParquetQueryClient } from "./lib/duckdbParquetQueryClient";
 import { fetchBenchmarkIndex, fetchBenchmarkRun, resolveBenchmarkDataPath } from "./lib/parquetReport";
 import {
   formatDate,
-  formatErrors,
   formatOps,
   formatThroughput,
   profileLabel,
   providerColor,
+  providerResultMeta,
+  providerResultStatusLabel,
   providerResultsForProfile,
   profilesForWorkload,
   timeseriesForProfile,
@@ -241,16 +242,14 @@ onBeforeUnmount(() => {
           <article v-for="result in providerRows" :key="`${result.provider}-${result.operation}`" class="result-row">
             <div>
               <strong>{{ providerLabel(result.provider) }}</strong>
-              <span>{{ result.operation }} · {{ result.status || "unknown" }}</span>
+              <span>{{ providerResultStatusLabel(result, latestRun.providers) }}</span>
             </div>
             <div class="metric-value">{{ formatMetric(result) }}</div>
             <div class="bar-track">
               <div class="bar-fill" :style="{ width: resultBarWidth(result), background: providerColor(result.provider) }"></div>
             </div>
             <div class="row-meta">
-              <span>{{ formatOps(result.ops_per_sec) }}</span>
-              <span>{{ formatErrors(result.errors) }} errors</span>
-              <span>{{ result.duration_seconds?.toFixed(1) || "0.0" }}s</span>
+              <span v-for="item in providerResultMeta(result, latestRun.providers)" :key="item">{{ item }}</span>
             </div>
           </article>
         </div>
