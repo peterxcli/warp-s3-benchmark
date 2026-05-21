@@ -1,0 +1,10 @@
+.pages-repo/
+.superpowers/
+.work/
+.venv/
+__pycache__/
+*.pyc
+out/
+run/
+site/dist/
+site/node_modules/
