@@ -106,7 +106,7 @@ provider_start_compose() {
     -o "${compose_file}" || return 1
   write_ozone_compose_override "${override_file}"
   docker_compose -f "${compose_file}" -f "${override_file}" up -d --scale datanode="${OZONE_DATANODES:-3}" scm om datanode s3g || return 1
-  wait_for_tcp "${WARP_HOST}" "${OZONE_LOCAL_TCP_TIMEOUT:-720}" || return 1
+  wait_for_tcp "${WARP_HOST}" 300 || return 1
   wait_for_warp_s3 "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OZONE_READY_TIMEOUT:-420}" || return 1
 }
 
@@ -132,7 +132,7 @@ provider_start_local() {
   else
     docker_compose -f "${compose_file}" up -d local || return 1
   fi
-  wait_for_tcp "${WARP_HOST}" 300 || return 1
+  wait_for_tcp "${WARP_HOST}" "${OZONE_LOCAL_TCP_TIMEOUT:-720}" || return 1
   wait_for_warp_s3 "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OZONE_READY_TIMEOUT:-420}" || return 1
 }
 
