@@ -23,6 +23,19 @@ on:
         options:
           - smoke
           - extended
+      ozone_deployment_mode:
+        description: "Ozone deployment mode. Use local only with an OZONE_LOCAL_IMAGE that contains the experimental ozone local command."
+        required: false
+        default: compose
+        type: choice
+        options:
+          - compose
+          - local
+      ozone_local_image:
+        description: "Container image for ozone_deployment_mode=local."
+        required: false
+        default: apache/ozone-runner:20260206-2-jdk21
+        type: string
 
 permissions:
   contents: write
@@ -59,6 +72,18 @@ jobs:
           else
             echo "enabled=false" >> "${GITHUB_OUTPUT}"
           fi
+
+      - name: Free runner disk space
+        if: ${{ steps.filter.outputs.enabled == 'true' && env.ACT != 'true' }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
 
       - name: Checkout repository
         if: ${{ steps.filter.outputs.enabled == 'true' }}
@@ -112,6 +137,8 @@ jobs:
           PROVIDER: ${{ matrix.provider }}
           OUTPUT_ROOT: ${{ github.workspace }}/out/providers/${{ matrix.provider }}
           KEEP_BENCHDATA: "false"
+          OZONE_DEPLOYMENT_MODE: ${{ matrix.provider == 'ozone' && (github.event.inputs.ozone_deployment_mode || 'compose') || 'compose' }}
+          OZONE_LOCAL_IMAGE: ${{ github.event.inputs.ozone_local_image || 'apache/ozone-runner:20260206-2-jdk21' }}
         run: |
           set -euo pipefail
           export PROFILE_FILE="${GITHUB_WORKSPACE}/benchmark/profiles/${PROFILE_SUITE}.json"
