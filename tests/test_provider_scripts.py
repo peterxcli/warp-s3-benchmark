@@ -48,3 +48,15 @@ def test_warmup_runs_against_discarded_bucket() -> None:
     assert 'warmup_bucket="${WARP_WARMUP_BUCKET:-${bucket}-warmup}"' in script
     assert 'warmup_log="${output_root}/warmup.log"' in script
     assert '--bucket="${warmup_bucket}"' in script
+
+
+def test_ozone_resets_between_workload_groups() -> None:
+    workflow = Path(".github/workflows/benchmark-nightly.yml").read_text(encoding="utf-8")
+    runner = Path("scripts/run-benchmark-provider.sh").read_text(encoding="utf-8")
+    ozone = provider_script("ozone")
+
+    assert "RESET_BETWEEN_WORKLOADS" in workflow
+    assert "matrix.provider == 'ozone'" in workflow
+    assert "previous_workload" in runner
+    assert "provider_reset" in runner
+    assert "provider_reset()" in ozone

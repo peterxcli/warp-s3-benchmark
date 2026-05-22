@@ -112,6 +112,7 @@ jobs:
           PROVIDER: ${{ matrix.provider }}
           OUTPUT_ROOT: ${{ github.workspace }}/out/providers/${{ matrix.provider }}
           KEEP_BENCHDATA: "false"
+          RESET_BETWEEN_WORKLOADS: ${{ matrix.provider == 'ozone' && 'true' || 'false' }}
         run: |
           set -euo pipefail
           export PROFILE_FILE="${GITHUB_WORKSPACE}/benchmark/profiles/${PROFILE_SUITE}.json"

@@ -106,11 +106,14 @@ for profile in load_profiles(profile_file):
         "analyze_text": analyze_text,
     })
     profile_rows.append(record)
-    command_lines.append((profile.profile_id, analyze_text, shlex.join(command)))
+    command_lines.append((profile.profile_id, profile.workload, analyze_text, shlex.join(command)))
 
 metadata_file.write_text(json.dumps({"profiles": profile_rows}, indent=2) + "\n", encoding="utf-8")
 commands_file.write_text(
-    "".join(f"{profile_id}\t{analyze_text}\t{command}\n" for profile_id, analyze_text, command in command_lines),
+    "".join(
+        f"{profile_id}\t{workload}\t{analyze_text}\t{command}\n"
+        for profile_id, workload, analyze_text, command in command_lines
+    ),
     encoding="utf-8",
 )
 PY
@@ -142,7 +145,22 @@ path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 
 if [[ "${ADAPTER_STATUS}" == "completed" ]]; then
-  while IFS=$'\t' read -r profile_id analyze_text command_line; do
+  previous_workload=""
+  while IFS=$'\t' read -r profile_id workload analyze_text command_line; do
+    if [[ "${RESET_BETWEEN_WORKLOADS:-false}" == "true" && -n "${previous_workload}" && "${workload}" != "${previous_workload}" ]]; then
+      benchmark_log "Resetting ${PROVIDER} before workload ${workload}"
+      if declare -F provider_reset >/dev/null 2>&1; then
+        provider_reset "${PROVIDER_IMAGE}" || ADAPTER_STATUS="failed"
+      else
+        provider_stop || true
+        provider_start "${PROVIDER_IMAGE}" || ADAPTER_STATUS="failed"
+      fi
+      if [[ "${ADAPTER_STATUS}" != "completed" ]]; then
+        benchmark_log "Provider ${PROVIDER} reset failed before workload ${workload}"
+        break
+      fi
+    fi
+    previous_workload="${workload}"
     benchmark_log "Running ${PROVIDER} ${profile_id}"
     set +e
     eval "${command_line}" >"${OUTPUT_ROOT}/${analyze_text}" 2>&1
