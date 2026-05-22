@@ -8,7 +8,7 @@
   "sizes": [
     { "key": "small", "object_size": "128KiB" },
     { "key": "medium", "object_size": "1MiB" },
-    { "key": "large", "object_size": "16MiB" }
+    { "key": "large", "object_size": "4MiB" }
   ],
   "concurrency": [
     { "key": "c01", "value": 1 },
