@@ -33,7 +33,7 @@ concurrency:
 
 env:
   PUBLISH_PAGES: ${{ github.event_name == 'schedule' || github.event.inputs.publish_pages == true || github.event.inputs.publish_pages == 'true' || inputs.publish_pages == true || inputs.publish_pages == 'true' || false }}
-  PROFILE_SUITE: ${{ github.event_name == 'schedule' && 'extended' || github.event.inputs.profile_suite || 'smoke' }}
+  PROFILE_SUITE: ${{ (github.event_name == 'schedule' || github.event.inputs.publish_pages == true || github.event.inputs.publish_pages == 'true' || inputs.publish_pages == true || inputs.publish_pages == 'true') && 'extended' || github.event.inputs.profile_suite || 'smoke' }}
 
 jobs:
   benchmark:

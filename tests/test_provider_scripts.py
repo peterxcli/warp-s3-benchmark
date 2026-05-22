@@ -18,6 +18,9 @@ def test_ozone_provider_overrides_ci_disk_and_replication_limits() -> None:
     assert "OZONE-SITE.XML_ozone.server.default.replication" in script
     assert "OZONE-SITE.XML_ozone.scm.container.size: \"1GB\"" in script
     assert "${OZONE_DATANODES:-1}" in script
+    assert 'up -d --scale datanode="${OZONE_DATANODES:-1}" scm om datanode s3g' in script
+    assert "recon" not in script.split('up -d --scale datanode="${OZONE_DATANODES:-1}"', 1)[1].split("|| return 1", 1)[0]
+    assert "httpfs" not in script.split('up -d --scale datanode="${OZONE_DATANODES:-1}"', 1)[1].split("|| return 1", 1)[0]
 
 
 def test_ceph_provider_publishes_rgw_port_without_host_network() -> None:
@@ -35,3 +38,12 @@ def test_readiness_probe_runs_without_gnu_timeout() -> None:
 
     assert "probe_command=(" in script
     assert "if (( ${#timeout_prefix[@]} > 0 )); then" in script
+
+
+def test_warmup_runs_against_discarded_bucket() -> None:
+    script = Path("scripts/benchmark/common.sh").read_text(encoding="utf-8")
+
+    assert "run_warp_warmup()" in script
+    assert 'warmup_bucket="${WARP_WARMUP_BUCKET:-${bucket}-warmup}"' in script
+    assert 'warmup_log="${output_root}/warmup.log"' in script
+    assert '--bucket="${warmup_bucket}"' in script

@@ -336,17 +336,18 @@ def normalize_provider_dir(provider_dir: Path) -> dict[str, Any]:
         artifacts.extend(artifact_rows(provider, profile))
 
     log_files = []
-    log_file = string_field(metadata.get("log_file"))
-    if log_file:
-        log_files.append(
-            {
-                "provider": provider,
-                "log_source": "provider",
-                "log_file": Path(log_file).name,
-                "path": log_file,
-                "line_count": 0,
-            }
-        )
+    for log_source, metadata_key in (("provider", "log_file"), ("warmup", "warmup_log_file")):
+        log_file = string_field(metadata.get(metadata_key))
+        if log_file:
+            log_files.append(
+                {
+                    "provider": provider,
+                    "log_source": log_source,
+                    "log_file": Path(log_file).name,
+                    "path": log_file,
+                    "line_count": 0,
+                }
+            )
 
     return {
         "provider": provider_record(metadata),

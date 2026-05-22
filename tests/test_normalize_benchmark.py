@@ -85,6 +85,8 @@ def test_normalize_benchmark_run_builds_results_and_timeseries(tmp_path: Path) -
                 "image_digest": "sha256:abc",
                 "endpoint": "127.0.0.1:9000",
                 "adapter_status": "completed",
+                "log_file": "provider.log",
+                "warmup_log_file": "warmup.log",
                 "profiles": [
                     {
                         "profile_id": "put-small-c01-prefix",
@@ -122,6 +124,7 @@ def test_normalize_benchmark_run_builds_results_and_timeseries(tmp_path: Path) -
     assert run["results"][0]["errors"] == 1
     assert len(run["timeseries"]) == 2
     assert run["commands"][0]["command"] == ["warp", "put"]
+    assert {row["log_source"] for row in run["log_files"]} == {"provider", "warmup"}
 
 
 def test_normalize_benchmark_run_parses_analyze_text_when_csv_is_missing(tmp_path: Path) -> None:

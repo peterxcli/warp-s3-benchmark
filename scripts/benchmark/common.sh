@@ -131,6 +131,71 @@ wait_for_warp_s3() {
   done
 }
 
+run_warp_warmup() {
+  local address="$1"
+  local access_key="$2"
+  local secret_key="$3"
+  local bucket="$4"
+  local output_root="$5"
+  local enabled
+  local warmup_bucket
+  local duration
+  local concurrent
+  local object_size
+  local warmup_dir
+  local warmup_log
+  local benchdata
+  local exit_code
+  local -a warmup_command
+  enabled="${WARP_WARMUP:-true}"
+  if [[ "${enabled}" != "true" ]]; then
+    benchmark_log "Skipping Warp warmup because WARP_WARMUP=${enabled}"
+    return 0
+  fi
+  if [[ ! -x "${WARP_BINARY}" ]]; then
+    benchmark_log "Warp binary is not executable: ${WARP_BINARY}"
+    return 1
+  fi
+  warmup_bucket="${WARP_WARMUP_BUCKET:-${bucket}-warmup}"
+  duration="${WARP_WARMUP_DURATION:-10s}"
+  concurrent="${WARP_WARMUP_CONCURRENCY:-4}"
+  object_size="${WARP_WARMUP_OBJECT_SIZE:-128KiB}"
+  warmup_dir="${RUNNER_TEMP:-/tmp}/warp-s3-warmup"
+  warmup_log="${output_root}/warmup.log"
+  benchdata="${warmup_dir}/${warmup_bucket}.csv.zst"
+  mkdir -p "${warmup_dir}" "${output_root}"
+  rm -f "${benchdata}" "${warmup_log}"
+  warmup_command=(
+    "${WARP_BINARY}" put
+    --host="${address}"
+    --access-key="${access_key}"
+    --secret-key="${secret_key}"
+    --bucket="${warmup_bucket}"
+    --duration="${duration}"
+    --concurrent="${concurrent}"
+    --obj.size="${object_size}"
+    --benchdata="${benchdata}"
+    --autoterm
+  )
+  benchmark_log "Running Warp warmup for ${warmup_bucket} (${duration}, c${concurrent}, ${object_size})"
+  {
+    printf 'Command:'
+    printf ' %q' "${warmup_command[@]}"
+    printf '\n\n'
+  } >"${warmup_log}"
+  set +e
+  "${warmup_command[@]}" >>"${warmup_log}" 2>&1
+  exit_code="$?"
+  set -e
+  rm -f "${benchdata}" || true
+  if [[ "${exit_code}" -ne 0 ]]; then
+    benchmark_log "Warp warmup failed for ${warmup_bucket}"
+    tail -n 20 "${warmup_log}" >&2 || true
+    return "${exit_code}"
+  fi
+  return 0
+}
+
 wait_for_container_log() {
   local container="$1"
   local pattern="$2"

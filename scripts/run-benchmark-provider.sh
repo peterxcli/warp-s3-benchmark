@@ -29,8 +29,11 @@ PROVIDER_IMAGE="$(provider_image)"
 PROVIDER_IMAGE_DIGEST="$(resolve_image "${PROVIDER_IMAGE}")"
 PROVIDER_LABEL="$(provider_label)"
 STARTUP_SECONDS=0
+WARMUP_SECONDS=0
+WARMUP_STATUS="skipped"
+WARMUP_LOG_FILE=""
 ADAPTER_STATUS="completed"
-export PROVIDER PROVIDER_STARTED_AT PROVIDER_IMAGE PROVIDER_IMAGE_DIGEST PROVIDER_LABEL STARTUP_SECONDS ADAPTER_STATUS KEEP_BENCHDATA BENCHDATA_ROOT
+export PROVIDER PROVIDER_STARTED_AT PROVIDER_IMAGE PROVIDER_IMAGE_DIGEST PROVIDER_LABEL STARTUP_SECONDS WARMUP_SECONDS WARMUP_STATUS WARMUP_LOG_FILE ADAPTER_STATUS KEEP_BENCHDATA BENCHDATA_ROOT
 
 cleanup() {
   provider_stop || true
@@ -45,8 +48,20 @@ STARTUP_SECONDS="$(( $(date +%s) - start_epoch ))"
 
 if [[ "${ADAPTER_STATUS}" != "completed" ]]; then
   benchmark_log "Provider ${PROVIDER} failed to start; metadata will record adapter failure"
+elif [[ "${WARP_WARMUP:-true}" == "true" ]]; then
+  warmup_epoch="$(date +%s)"
+  WARMUP_LOG_FILE="warmup.log"
+  if run_warp_warmup "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OUTPUT_ROOT}"; then
+    WARMUP_STATUS="completed"
+  else
+    WARMUP_STATUS="failed"
+    benchmark_log "Warmup failed for ${PROVIDER}; continuing with measured profiles"
+  fi
+  WARMUP_SECONDS="$(( $(date +%s) - warmup_epoch ))"
+else
+  benchmark_log "Provider ${PROVIDER} warmup disabled"
 fi
-export WARP_HOST="${WARP_HOST:-}" WARP_ACCESS_KEY="${WARP_ACCESS_KEY:-}" WARP_SECRET_KEY="${WARP_SECRET_KEY:-}" STARTUP_SECONDS ADAPTER_STATUS
+export WARP_HOST="${WARP_HOST:-}" WARP_ACCESS_KEY="${WARP_ACCESS_KEY:-}" WARP_SECRET_KEY="${WARP_SECRET_KEY:-}" STARTUP_SECONDS WARMUP_SECONDS WARMUP_STATUS WARMUP_LOG_FILE ADAPTER_STATUS
 
 python3 - "${PROFILE_FILE}" "${WARP_BINARY}" "${WARP_HOST:-}" "${WARP_ACCESS_KEY:-}" "${WARP_SECRET_KEY:-}" "${WARP_BUCKET}" "${OUTPUT_ROOT}" "${METADATA_FILE}" "${COMMANDS_FILE}" <<'PY'
 import json
@@ -117,6 +132,9 @@ payload.update({
     "endpoint": os.environ.get("WARP_HOST", ""),
     "adapter_status": os.environ["ADAPTER_STATUS"],
     "startup_seconds": int(os.environ["STARTUP_SECONDS"]),
+    "warmup_seconds": int(os.environ["WARMUP_SECONDS"]),
+    "warmup_status": os.environ["WARMUP_STATUS"],
+    "warmup_log_file": os.environ["WARMUP_LOG_FILE"],
     "started_at": os.environ["PROVIDER_STARTED_AT"],
     "log_file": "provider.log",
 })
