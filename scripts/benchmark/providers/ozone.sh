@@ -84,12 +84,6 @@ provider_start() {
   wait_for_warp_s3 "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OZONE_READY_TIMEOUT:-420}" || return 1
 }
 
-provider_reset() {
-  local image="$1"
-  provider_stop || true
-  provider_start "${image}"
-}
-
 provider_stop() {
   local compose_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.yaml"
   local override_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.override.yaml"
