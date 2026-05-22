@@ -36,6 +36,7 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "ozone-local-data:/root/.ozone" in script
     assert "ozone\n      - local\n      - run" in script
     assert "OZONE_LOCAL_DATANODES" in script
+    assert "OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT" in script
 
 
 def test_ceph_provider_publishes_rgw_port_without_host_network() -> None:
