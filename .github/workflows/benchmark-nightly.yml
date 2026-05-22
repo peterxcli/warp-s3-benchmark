@@ -164,13 +164,11 @@ jobs:
             -am \
             package \
             -f "${ozone_src}/pom.xml"
-          compose_file="${ozone_src}/hadoop-ozone/dist/target/compose/ozone-local/docker-compose.yaml"
-          env_file="${ozone_src}/hadoop-ozone/dist/target/compose/ozone-local/.env"
-          test -f "${compose_file}"
-          test -f "${env_file}"
+          ozone_home="$(find "${ozone_src}/hadoop-ozone/dist/target" -maxdepth 1 -type d -name 'ozone-*' | head -n 1)"
+          test -n "${ozone_home}"
+          test -x "${ozone_home}/bin/ozone"
           echo "OZONE_DEPLOYMENT_MODE=local" >> "${GITHUB_ENV}"
-          echo "OZONE_LOCAL_COMPOSE_FILE=${compose_file}" >> "${GITHUB_ENV}"
-          echo "OZONE_LOCAL_COMPOSE_ENV_FILE=${env_file}" >> "${GITHUB_ENV}"
+          echo "OZONE_LOCAL_DIST_DIR=${ozone_home}" >> "${GITHUB_ENV}"
           echo "OZONE_LOCAL_IMAGE=${{ github.event.inputs.ozone_local_image || 'apache/ozone-runner:20260206-2-jdk21' }}" >> "${GITHUB_ENV}"
           df -h
 
