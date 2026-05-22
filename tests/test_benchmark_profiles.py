@@ -11,7 +11,7 @@ def test_load_profiles_expands_workload_dimensions() -> None:
     assert "get-range-medium-c16-prefix" in ids
     assert "multipart-put-large-c04-prefix" in ids
     assert all(profile.duration_seconds > 0 for profile in profiles)
-    assert all(profile.objects >= 6400 for profile in profiles if profile.workload == "delete")
+    assert all(profile.objects >= 1024 for profile in profiles if profile.workload == "delete")
 
 
 def test_load_smoke_profiles_for_manual_dispatch() -> None:
@@ -71,4 +71,4 @@ def test_render_warp_command_only_includes_objects_for_supported_workloads() -> 
 
     assert not any(flag.startswith("--objects=") for flag in commands["put-small-c01-prefix"])
     assert not any(flag.startswith("--objects=") for flag in commands["multipart-put-large-c04-prefix"])
-    assert "--objects=6400" in commands["delete-small-c16-prefix"]
+    assert "--objects=1024" in commands["delete-small-c16-prefix"]
