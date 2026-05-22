@@ -79,7 +79,7 @@ services:
       OZONE_LOCAL_DATANODES: ${OZONE_LOCAL_DATANODES:-3}
       OZONE_LOCAL_FORMAT: ${OZONE_LOCAL_FORMAT:-always}
       OZONE_LOCAL_RECON_ENABLED: ${OZONE_LOCAL_RECON_ENABLED:-false}
-      OZONE_LOCAL_STARTUP_TIMEOUT: ${OZONE_LOCAL_STARTUP_TIMEOUT:-240s}
+      OZONE_LOCAL_STARTUP_TIMEOUT: ${OZONE_LOCAL_STARTUP_TIMEOUT:-600s}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:
@@ -106,7 +106,7 @@ provider_start_compose() {
     -o "${compose_file}" || return 1
   write_ozone_compose_override "${override_file}"
   docker_compose -f "${compose_file}" -f "${override_file}" up -d --scale datanode="${OZONE_DATANODES:-3}" scm om datanode s3g || return 1
-  wait_for_tcp "${WARP_HOST}" 300 || return 1
+  wait_for_tcp "${WARP_HOST}" "${OZONE_LOCAL_TCP_TIMEOUT:-720}" || return 1
   wait_for_warp_s3 "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OZONE_READY_TIMEOUT:-420}" || return 1
 }
 
