@@ -87,7 +87,7 @@
       "size_keys": ["small"],
       "concurrency_keys": ["c04", "c16"],
       "prefix_mode_keys": ["prefix", "hot"],
-      "objects": 1600,
+      "objects": 6400,
       "duration_seconds": 10
     },
     {

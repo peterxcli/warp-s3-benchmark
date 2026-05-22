@@ -16,7 +16,8 @@ def test_ozone_provider_overrides_ci_disk_and_replication_limits() -> None:
     assert "OZONE-SITE.XML_ozone.scm.datanode.ratis.volume.free-space.min" in script
     assert "OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit" in script
     assert "OZONE-SITE.XML_ozone.server.default.replication" in script
-    assert "OZONE-SITE.XML_ozone.scm.container.size: \"1GB\"" in script
+    assert "OZONE-SITE.XML_ozone.scm.container.size: \"128MB\"" in script
+    assert "OZONE-SITE.XML_ozone.scm.block.size: \"16MB\"" in script
     assert "${OZONE_DATANODES:-3}" in script
     assert 'up -d --scale datanode="${OZONE_DATANODES:-3}" scm om datanode s3g' in script
     assert "recon" not in script.split('up -d --scale datanode="${OZONE_DATANODES:-3}"', 1)[1].split("|| return 1", 1)[0]

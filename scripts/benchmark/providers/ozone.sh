@@ -29,7 +29,8 @@ services:
          OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit: "0s"
          OZONE-SITE.XML_ozone.server.default.replication: "1"
          OZONE-SITE.XML_ozone.server.default.replication.type: "RATIS"
-         OZONE-SITE.XML_ozone.scm.container.size: "1GB"
+         OZONE-SITE.XML_ozone.scm.container.size: "128MB"
+         OZONE-SITE.XML_ozone.scm.block.size: "16MB"
    om:
       environment:
          OZONE-SITE.XML_hdds.datanode.volume.min.free.space: "1MB"
@@ -39,7 +40,8 @@ services:
          OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit: "0s"
          OZONE-SITE.XML_ozone.server.default.replication: "1"
          OZONE-SITE.XML_ozone.server.default.replication.type: "RATIS"
-         OZONE-SITE.XML_ozone.scm.container.size: "1GB"
+         OZONE-SITE.XML_ozone.scm.container.size: "128MB"
+         OZONE-SITE.XML_ozone.scm.block.size: "16MB"
    scm:
       environment:
          OZONE-SITE.XML_hdds.datanode.volume.min.free.space: "1MB"
@@ -49,7 +51,8 @@ services:
          OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit: "0s"
          OZONE-SITE.XML_ozone.server.default.replication: "1"
          OZONE-SITE.XML_ozone.server.default.replication.type: "RATIS"
-         OZONE-SITE.XML_ozone.scm.container.size: "1GB"
+         OZONE-SITE.XML_ozone.scm.container.size: "128MB"
+         OZONE-SITE.XML_ozone.scm.block.size: "16MB"
    s3g:
       environment:
          OZONE-SITE.XML_hdds.datanode.volume.min.free.space: "1MB"
@@ -59,7 +62,8 @@ services:
          OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit: "0s"
          OZONE-SITE.XML_ozone.server.default.replication: "1"
          OZONE-SITE.XML_ozone.server.default.replication.type: "RATIS"
-         OZONE-SITE.XML_ozone.scm.container.size: "1GB"
+         OZONE-SITE.XML_ozone.scm.container.size: "128MB"
+         OZONE-SITE.XML_ozone.scm.block.size: "16MB"
 OVERRIDE
 }
 
