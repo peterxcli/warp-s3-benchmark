@@ -119,7 +119,7 @@ jobs:
           bash scripts/run-benchmark-provider.sh "${PROVIDER}"
 
       - name: Upload provider artifact
-        if: ${{ always() && steps.filter.outputs.enabled == 'true' }}
+        if: ${{ always() && steps.filter.outputs.enabled == 'true' && env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: warp-provider-${{ matrix.provider }}

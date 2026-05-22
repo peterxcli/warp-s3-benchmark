@@ -79,6 +79,7 @@ wait_for_warp_s3() {
   local exit_code
   local command_timeout
   local -a timeout_prefix
+  local -a probe_command
   if [[ ! -x "${WARP_BINARY}" ]]; then
     benchmark_log "Warp binary is not executable: ${WARP_BINARY}"
     return 1
@@ -95,17 +96,24 @@ wait_for_warp_s3() {
   benchdata="${probe_dir}/${bucket}.csv.zst"
   while true; do
     rm -f "${probe_log}" "${benchdata}"
+    probe_command=(
+      "${WARP_BINARY}" put
+      --host="${address}"
+      --access-key="${access_key}"
+      --secret-key="${secret_key}"
+      --bucket="${bucket}"
+      --duration=1s
+      --concurrent=1
+      --obj.size=1KiB
+      --benchdata="${benchdata}"
+      --autoterm
+    )
     set +e
-    "${timeout_prefix[@]}" "${WARP_BINARY}" put \
-      --host="${address}" \
-      --access-key="${access_key}" \
-      --secret-key="${secret_key}" \
-      --bucket="${bucket}" \
-      --duration=1s \
-      --concurrent=1 \
-      --obj.size=1KiB \
-      --benchdata="${benchdata}" \
-      --autoterm >"${probe_log}" 2>&1
+    if (( ${#timeout_prefix[@]} > 0 )); then
+      "${timeout_prefix[@]}" "${probe_command[@]}" >"${probe_log}" 2>&1
+    else
+      "${probe_command[@]}" >"${probe_log}" 2>&1
+    fi
     exit_code="$?"
     set -e
     if [[ "${exit_code}" -eq 0 ]]; then
