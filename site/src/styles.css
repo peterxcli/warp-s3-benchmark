@@ -243,6 +243,62 @@ select {
   gap: 10px;
 }
 
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.chart-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.comparison-chart {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.comparison-chart svg {
+  min-width: 900px;
+  height: 360px;
+  background:
+    linear-gradient(#eef3f8 1px, transparent 1px),
+    linear-gradient(90deg, #eef3f8 1px, transparent 1px);
+  background-size: 100% 63px, 92px 100%;
+}
+
+.chart-axis {
+  stroke: #bdcad8;
+  stroke-width: 1;
+}
+
+.chart-bar {
+  rx: 3px;
+}
+
+.chart-bar.failed {
+  opacity: 0.75;
+}
+
+.chart-label,
+.chart-max {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .result-grid {
   display: grid;
   gap: 10px;
@@ -417,6 +473,10 @@ pre {
 
   .result-row {
     grid-template-columns: 1fr;
+  }
+
+  .comparison-chart svg {
+    min-width: 760px;
   }
 
   .metric-value,

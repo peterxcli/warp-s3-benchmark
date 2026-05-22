@@ -67,6 +67,30 @@ const providerRows = computed<BenchmarkResult[]>(() =>
     ? providerResultsForProfile(latestRun.value?.results || [], selectedProfile.value.profile_id, metric.value)
     : [],
 );
+const chartProviders = computed<string[]>(() =>
+  latestRun.value?.providers.map((provider) => provider.provider) || [],
+);
+const workloadChartRows = computed(() => {
+  if (!latestRun.value) return [];
+  return workloadProfiles.value.map((profile) => {
+    const results = chartProviders.value.map((provider) => {
+      const result = latestRun.value?.results.find(
+        (entry) => entry.profile_id === profile.profile_id && entry.provider === provider,
+      );
+      const value = result?.status === "completed" ? Number(result[metric.value] || 0) : 0;
+      return { provider, result, value };
+    });
+    return { profile, results };
+  });
+});
+const workloadChartMax = computed(() =>
+  Math.max(...workloadChartRows.value.flatMap((row) => row.results.map((result) => result.value)), 0),
+);
+const workloadChartWidth = computed(() => Math.max(900, workloadChartRows.value.length * 92));
+const workloadChartHeight = 360;
+const workloadChartPlotTop = 24;
+const workloadChartPlotBottom = 82;
+const workloadChartPlotHeight = workloadChartHeight - workloadChartPlotTop - workloadChartPlotBottom;
 const selectedArtifacts = computed(() =>
   selectedProfile.value
     ? (latestRun.value?.artifacts || []).filter((artifact) => artifact.profile_id === selectedProfile.value?.profile_id)
@@ -102,11 +126,44 @@ function formatMetric(result: BenchmarkResult): string {
   return formatOps(result.objects_per_sec);
 }
 
+function formatMetricNumber(value: number): string {
+  if (metric.value === "throughput_mib_per_sec") return formatThroughput(value);
+  return formatOps(value);
+}
+
 function resultBarWidth(result: BenchmarkResult): string {
   const max = Math.max(...providerRows.value.map((row) => Number(metricValue(row) || 0)), 0);
   const value = Number(metricValue(result) || 0);
   if (!max || !value) return "0%";
   return `${Math.max(4, Math.round((value / max) * 100))}%`;
+}
+
+function chartBarHeight(value: number): number {
+  if (!workloadChartMax.value || !value) return 0;
+  return Math.max(2, (value / workloadChartMax.value) * workloadChartPlotHeight);
+}
+
+function chartBarY(value: number): number {
+  return workloadChartPlotTop + workloadChartPlotHeight - chartBarHeight(value);
+}
+
+function chartBarX(groupIndex: number, providerIndex: number): number {
+  const groupWidth = workloadChartWidth.value / Math.max(workloadChartRows.value.length, 1);
+  const innerWidth = Math.min(68, groupWidth - 18);
+  const barWidth = chartBarWidth();
+  return groupIndex * groupWidth + (groupWidth - innerWidth) / 2 + providerIndex * barWidth;
+}
+
+function chartBarWidth(): number {
+  const providerCount = Math.max(chartProviders.value.length, 1);
+  const groupWidth = workloadChartWidth.value / Math.max(workloadChartRows.value.length, 1);
+  const innerWidth = Math.min(68, groupWidth - 18);
+  return innerWidth / providerCount;
+}
+
+function chartProfileX(index: number): number {
+  const groupWidth = workloadChartWidth.value / Math.max(workloadChartRows.value.length, 1);
+  return index * groupWidth + groupWidth / 2;
 }
 
 function providerLabel(provider: string): string {
@@ -230,6 +287,66 @@ onBeforeUnmount(() => {
             <option value="objects_per_sec">Objects/sec</option>
           </select>
         </label>
+      </section>
+
+      <section class="panel comparison">
+        <header>
+          <h2>Centralized Comparison</h2>
+          <p>{{ selectedWorkload }} · {{ workloadProfiles.length }} profiles · {{ metric === "throughput_mib_per_sec" ? "Throughput" : metric === "ops_per_sec" ? "Ops/sec" : "Objects/sec" }}</p>
+        </header>
+
+        <div class="chart-legend" aria-label="Provider legend">
+          <span v-for="provider in chartProviders" :key="provider">
+            <i :style="{ background: providerColor(provider) }"></i>
+            {{ providerLabel(provider) }}
+          </span>
+        </div>
+
+        <div class="comparison-chart">
+          <svg
+            :viewBox="`0 0 ${workloadChartWidth} ${workloadChartHeight}`"
+            role="img"
+            :aria-label="`${selectedWorkload} provider comparison chart`"
+            preserveAspectRatio="none"
+          >
+            <line
+              :x1="0"
+              :x2="workloadChartWidth"
+              :y1="workloadChartPlotTop + workloadChartPlotHeight"
+              :y2="workloadChartPlotTop + workloadChartPlotHeight"
+              class="chart-axis"
+            />
+            <g v-for="(row, rowIndex) in workloadChartRows" :key="row.profile.profile_id">
+              <rect
+                v-for="(entry, providerIndex) in row.results"
+                :key="`${row.profile.profile_id}-${entry.provider}`"
+                class="chart-bar"
+                :class="{ failed: entry.result?.status !== 'completed' }"
+                :x="chartBarX(rowIndex, providerIndex) + 1"
+                :y="entry.value ? chartBarY(entry.value) : workloadChartPlotTop + workloadChartPlotHeight - 3"
+                :width="Math.max(2, chartBarWidth() - 2)"
+                :height="entry.value ? chartBarHeight(entry.value) : 3"
+                :fill="entry.value ? providerColor(entry.provider) : '#c9d4e0'"
+              >
+                <title>
+                  {{ providerLabel(entry.provider) }} · {{ profileLabel(row.profile) }} ·
+                  {{ entry.result?.status === "completed" ? formatMetricNumber(entry.value) : entry.result?.status || "missing" }}
+                </title>
+              </rect>
+              <text
+                class="chart-label"
+                :x="chartProfileX(rowIndex)"
+                :y="workloadChartHeight - 42"
+                text-anchor="end"
+                transform-origin="center"
+                :transform="`rotate(-35 ${chartProfileX(rowIndex)} ${workloadChartHeight - 42})`"
+              >
+                {{ profileLabel(row.profile) }}
+              </text>
+            </g>
+            <text class="chart-max" x="0" y="16">{{ formatMetricNumber(workloadChartMax) }}</text>
+          </svg>
+        </div>
       </section>
 
       <section class="panel comparison">
