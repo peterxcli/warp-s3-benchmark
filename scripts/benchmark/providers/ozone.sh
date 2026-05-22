@@ -71,6 +71,7 @@ services:
     image: ${OZONE_LOCAL_IMAGE:-apache/ozone-runner:20260206-2-jdk21}
     user: "0:0"
     volumes:
+      - ${OZONE_LOCAL_DIST_DIR:-.}:/opt/hadoop
       - ozone-local-data:/root/.ozone/local
     environment:
       AWS_ACCESS_KEY_ID: ${OZONE_ACCESS_KEY:-admin}
@@ -113,13 +114,24 @@ provider_start_local() {
   local image="$1"
   local compose_dir="${OUTPUT_ROOT}/ozone-local-compose"
   local compose_file="${compose_dir}/docker-compose.yaml"
+  local env_file=""
   mkdir -p "${compose_dir}"
   export OZONE_LOCAL_IMAGE="${image}"
   export WARP_HOST="${OZONE_HOST:-127.0.0.1:${OZONE_S3G_PORT:-9878}}"
   export WARP_ACCESS_KEY="${OZONE_ACCESS_KEY:-admin}"
   export WARP_SECRET_KEY="${OZONE_SECRET_KEY:-admin123}"
-  write_ozone_local_compose "${compose_file}"
-  docker_compose -f "${compose_file}" up -d local || return 1
+  if [[ -n "${OZONE_LOCAL_COMPOSE_FILE:-}" ]]; then
+    compose_file="${OZONE_LOCAL_COMPOSE_FILE}"
+    env_file="${OZONE_LOCAL_COMPOSE_ENV_FILE:-$(dirname "${compose_file}")/.env}"
+  else
+    export OZONE_LOCAL_DIST_DIR="${OZONE_LOCAL_DIST_DIR:-${PWD}}"
+    write_ozone_local_compose "${compose_file}"
+  fi
+  if [[ -n "${env_file}" && -f "${env_file}" ]]; then
+    docker_compose --env-file "${env_file}" -f "${compose_file}" up -d local || return 1
+  else
+    docker_compose -f "${compose_file}" up -d local || return 1
+  fi
   wait_for_tcp "${WARP_HOST}" 300 || return 1
   wait_for_warp_s3 "${WARP_HOST}" "${WARP_ACCESS_KEY}" "${WARP_SECRET_KEY}" "${WARP_BUCKET}" "${OZONE_READY_TIMEOUT:-420}" || return 1
 }
@@ -137,9 +149,13 @@ provider_stop() {
   local compose_file
   local override_file
   if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" == "local" ]]; then
-    compose_file="${OUTPUT_ROOT}/ozone-local-compose/docker-compose.yaml"
+    compose_file="${OZONE_LOCAL_COMPOSE_FILE:-${OUTPUT_ROOT}/ozone-local-compose/docker-compose.yaml}"
     if [[ -f "${compose_file}" ]]; then
-      docker_compose -f "${compose_file}" down -v || true
+      if [[ -n "${OZONE_LOCAL_COMPOSE_ENV_FILE:-}" && -f "${OZONE_LOCAL_COMPOSE_ENV_FILE}" ]]; then
+        docker_compose --env-file "${OZONE_LOCAL_COMPOSE_ENV_FILE}" -f "${compose_file}" down -v || true
+      else
+        docker_compose -f "${compose_file}" down -v || true
+      fi
     fi
   else
     compose_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.yaml"
@@ -154,9 +170,13 @@ provider_logs() {
   local compose_file
   local override_file
   if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" == "local" ]]; then
-    compose_file="${OUTPUT_ROOT}/ozone-local-compose/docker-compose.yaml"
+    compose_file="${OZONE_LOCAL_COMPOSE_FILE:-${OUTPUT_ROOT}/ozone-local-compose/docker-compose.yaml}"
     if [[ -f "${compose_file}" ]]; then
-      docker_compose -f "${compose_file}" logs
+      if [[ -n "${OZONE_LOCAL_COMPOSE_ENV_FILE:-}" && -f "${OZONE_LOCAL_COMPOSE_ENV_FILE}" ]]; then
+        docker_compose --env-file "${OZONE_LOCAL_COMPOSE_ENV_FILE}" -f "${compose_file}" logs
+      else
+        docker_compose -f "${compose_file}" logs
+      fi
     fi
   else
     compose_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.yaml"

@@ -24,9 +24,9 @@ on:
           - smoke
           - extended
       ozone_deployment_mode:
-        description: "Ozone deployment mode. Use local only with an OZONE_LOCAL_IMAGE that contains the experimental ozone local command."
+        description: "Ozone deployment mode."
         required: false
-        default: compose
+        default: local
         type: choice
         options:
           - compose
@@ -35,6 +35,11 @@ on:
         description: "Container image for ozone_deployment_mode=local."
         required: false
         default: apache/ozone-runner:20260206-2-jdk21
+        type: string
+      ozone_local_ref:
+        description: "Ozone branch/ref to build for ozone_deployment_mode=local."
+        required: false
+        default: codex/local-ozone-series
         type: string
 
 permissions:
@@ -112,6 +117,13 @@ jobs:
         if: ${{ steps.filter.outputs.enabled == 'true' }}
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
+      - name: Set up Java for Ozone local
+        if: ${{ steps.filter.outputs.enabled == 'true' && matrix.provider == 'ozone' && (github.event.inputs.ozone_deployment_mode || 'local') == 'local' }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Install dependencies
         if: ${{ steps.filter.outputs.enabled == 'true' }}
         run: |
@@ -131,13 +143,44 @@ jobs:
           docker system prune -af --volumes || true
           df -h
 
+      - name: Build experimental Ozone local
+        if: ${{ steps.filter.outputs.enabled == 'true' && matrix.provider == 'ozone' && (github.event.inputs.ozone_deployment_mode || 'local') == 'local' }}
+        env:
+          OZONE_LOCAL_REPO: https://github.com/peterxcli/ozone.git
+          OZONE_LOCAL_REF: ${{ github.event.inputs.ozone_local_ref || 'codex/local-ozone-series' }}
+        run: |
+          set -euo pipefail
+          ozone_src="${RUNNER_TEMP}/ozone-local-src"
+          rm -rf "${ozone_src}"
+          git clone --depth 1 --branch "${OZONE_LOCAL_REF}" "${OZONE_LOCAL_REPO}" "${ozone_src}"
+          mvn -B \
+            -DskipTests \
+            -DskipRecon \
+            -DskipShade \
+            -Dskip.npm \
+            -Dmaven.javadoc.skip=true \
+            -Pdist \
+            -pl :ozone-dist \
+            -am \
+            package \
+            -f "${ozone_src}/pom.xml"
+          compose_file="${ozone_src}/hadoop-ozone/dist/target/compose/ozone-local/docker-compose.yaml"
+          env_file="${ozone_src}/hadoop-ozone/dist/target/compose/ozone-local/.env"
+          test -f "${compose_file}"
+          test -f "${env_file}"
+          echo "OZONE_DEPLOYMENT_MODE=local" >> "${GITHUB_ENV}"
+          echo "OZONE_LOCAL_COMPOSE_FILE=${compose_file}" >> "${GITHUB_ENV}"
+          echo "OZONE_LOCAL_COMPOSE_ENV_FILE=${env_file}" >> "${GITHUB_ENV}"
+          echo "OZONE_LOCAL_IMAGE=${{ github.event.inputs.ozone_local_image || 'apache/ozone-runner:20260206-2-jdk21' }}" >> "${GITHUB_ENV}"
+          df -h
+
       - name: Run provider benchmark
         if: ${{ steps.filter.outputs.enabled == 'true' }}
         env:
           PROVIDER: ${{ matrix.provider }}
           OUTPUT_ROOT: ${{ github.workspace }}/out/providers/${{ matrix.provider }}
           KEEP_BENCHDATA: "false"
-          OZONE_DEPLOYMENT_MODE: ${{ matrix.provider == 'ozone' && (github.event.inputs.ozone_deployment_mode || 'compose') || 'compose' }}
+          OZONE_DEPLOYMENT_MODE: ${{ matrix.provider == 'ozone' && (github.event.inputs.ozone_deployment_mode || 'local') || 'compose' }}
           OZONE_LOCAL_IMAGE: ${{ github.event.inputs.ozone_local_image || 'apache/ozone-runner:20260206-2-jdk21' }}
         run: |
           set -euo pipefail
