@@ -38,6 +38,7 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "OZONE_LOCAL_DATANODES:-3" in script
     assert "OZONE_LOCAL_STARTUP_TIMEOUT:-600s" in script
     assert "OZONE_LOCAL_TCP_TIMEOUT:-720" in script
+    assert "OZONE_LOCAL_READY_TIMEOUT:-900" in script
 
 
 def test_ceph_provider_publishes_rgw_port_without_host_network() -> None:
