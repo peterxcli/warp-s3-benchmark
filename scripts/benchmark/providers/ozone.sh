@@ -75,13 +75,14 @@ services:
       - ${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone
       - ozone-local-data:/root/.ozone
     environment:
-      AWS_ACCESS_KEY_ID: ${OZONE_ACCESS_KEY:-admin}
-      AWS_SECRET_ACCESS_KEY: ${OZONE_SECRET_KEY:-admin123}
-      OZONE_CONF_DIR: /etc/ozone
-      OZONE_LOCAL_DATANODES: ${OZONE_LOCAL_DATANODES:-1}
-      OZONE_LOCAL_FORMAT: ${OZONE_LOCAL_FORMAT:-always}
-      OZONE_LOCAL_RECON_ENABLED: ${OZONE_LOCAL_RECON_ENABLED:-false}
-      OZONE_LOCAL_STARTUP_TIMEOUT: ${OZONE_LOCAL_STARTUP_TIMEOUT:-600s}
+      - AWS_ACCESS_KEY_ID=${OZONE_ACCESS_KEY:-admin}
+      - AWS_SECRET_ACCESS_KEY=${OZONE_SECRET_KEY:-admin123}
+      - OZONE_CONF_DIR=/etc/ozone
+      - OZONE_LOCAL_DATANODES=${OZONE_LOCAL_DATANODES:-1}
+      - OZONE_LOCAL_FORMAT=${OZONE_LOCAL_FORMAT:-always}
+      - OZONE_LOCAL_RECON_ENABLED=${OZONE_LOCAL_RECON_ENABLED:-false}
+      - OZONE_LOCAL_STARTUP_TIMEOUT=${OZONE_LOCAL_STARTUP_TIMEOUT:-600s}
+      - OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-64GB}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:
@@ -93,20 +94,6 @@ services:
 volumes:
   ozone-local-data:
 COMPOSE
-}
-
-write_ozone_local_site() {
-  local conf_dir="$1"
-  mkdir -p "${conf_dir}"
-  cat > "${conf_dir}/ozone-site.xml" <<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-  <property>
-    <name>ozone.scm.container.size</name>
-    <value>${OZONE_LOCAL_CONTAINER_SIZE:-64GB}</value>
-  </property>
-</configuration>
-XML
 }
 
 provider_start_compose() {
@@ -142,7 +129,7 @@ provider_start_local() {
   else
     export OZONE_LOCAL_DIST_DIR="${OZONE_LOCAL_DIST_DIR:-${PWD}}"
     export OZONE_LOCAL_CONF_DIR="${OZONE_LOCAL_CONF_DIR:-${compose_dir}/conf}"
-    write_ozone_local_site "${OZONE_LOCAL_CONF_DIR}"
+    mkdir -p "${OZONE_LOCAL_CONF_DIR}"
     write_ozone_local_compose "${compose_file}"
   fi
   if [[ -n "${env_file}" && -f "${env_file}" ]]; then

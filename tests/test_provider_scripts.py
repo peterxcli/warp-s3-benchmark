@@ -35,8 +35,8 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "OZONE_LOCAL_COMPOSE_FILE" in script
     assert "OZONE_LOCAL_COMPOSE_ENV_FILE" in script
     assert "${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone" in script
-    assert "OZONE_CONF_DIR: /etc/ozone" in script
-    assert "write_ozone_local_site" in script
+    assert "OZONE_CONF_DIR=/etc/ozone" in script
+    assert "OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-64GB}" in script
     assert "ozone-local-data:/root/.ozone" in script
     assert "ozone\n      - local\n      - run" in script
     assert "OZONE_LOCAL_DATANODES:-1" in script
