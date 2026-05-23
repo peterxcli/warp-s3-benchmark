@@ -34,7 +34,7 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "${OZONE_LOCAL_DIST_DIR:-.}:/opt/hadoop" in script
     assert "OZONE_LOCAL_COMPOSE_FILE" in script
     assert "OZONE_LOCAL_COMPOSE_ENV_FILE" in script
-    assert "OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=${OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT:-6}" in script
+    assert "OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=${OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT:-3}" in script
     assert "ozone-local-data:/root/.ozone" in script
     assert "ozone\n      - local\n      - run" in script
     assert "OZONE_LOCAL_DATANODES:-1" in script
