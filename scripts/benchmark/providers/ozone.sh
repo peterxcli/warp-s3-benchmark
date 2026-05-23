@@ -81,6 +81,7 @@ services:
       - OZONE_LOCAL_RECON_ENABLED=${OZONE_LOCAL_RECON_ENABLED:-false}
       - OZONE_LOCAL_STARTUP_TIMEOUT=${OZONE_LOCAL_STARTUP_TIMEOUT:-600s}
       - OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=${OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT:-3}
+      - OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-1GB}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:

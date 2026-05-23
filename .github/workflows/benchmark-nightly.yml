@@ -51,6 +51,11 @@ on:
         required: false
         default: "3"
         type: string
+      ozone_local_container_size:
+        description: "SCM container size for ozone_deployment_mode=local."
+        required: false
+        default: 1GB
+        type: string
 
 permissions:
   contents: write
@@ -192,6 +197,7 @@ jobs:
           OZONE_LOCAL_IMAGE: ${{ github.event.inputs.ozone_local_image || 'apache/ozone-runner:20260206-2-jdk21' }}
           OZONE_LOCAL_DATANODES: ${{ github.event.inputs.ozone_local_datanodes || '1' }}
           OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT: ${{ github.event.inputs.ozone_local_pipeline_owner_container_count || '3' }}
+          OZONE_LOCAL_CONTAINER_SIZE: ${{ github.event.inputs.ozone_local_container_size || '1GB' }}
         run: |
           set -euo pipefail
           export PROFILE_FILE="${GITHUB_WORKSPACE}/benchmark/profiles/${PROFILE_SUITE}.json"
