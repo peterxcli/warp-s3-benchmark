@@ -34,7 +34,7 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "${OZONE_LOCAL_DIST_DIR:-.}:/opt/hadoop" in script
     assert "OZONE_LOCAL_COMPOSE_FILE" in script
     assert "OZONE_LOCAL_COMPOSE_ENV_FILE" in script
-    assert "${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone:ro" in script
+    assert "${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone" in script
     assert "OZONE_CONF_DIR: /etc/ozone" in script
     assert "write_ozone_local_site" in script
     assert "ozone-local-data:/root/.ozone" in script

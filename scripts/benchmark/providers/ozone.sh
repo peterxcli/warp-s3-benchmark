@@ -72,7 +72,7 @@ services:
     user: "0:0"
     volumes:
       - ${OZONE_LOCAL_DIST_DIR:-.}:/opt/hadoop
-      - ${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone:ro
+      - ${OZONE_LOCAL_CONF_DIR:-.}:/etc/ozone
       - ozone-local-data:/root/.ozone
     environment:
       AWS_ACCESS_KEY_ID: ${OZONE_ACCESS_KEY:-admin}
