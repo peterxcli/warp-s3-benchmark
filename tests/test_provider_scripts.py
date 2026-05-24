@@ -16,11 +16,11 @@ def test_ozone_provider_uses_default_container_and_block_sizes() -> None:
     assert "OZONE-SITE.XML_ozone.scm.datanode.ratis.volume.free-space.min" in script
     assert "OZONE-SITE.XML_hdds.scm.wait.time.after.safemode.exit" in script
     assert "OZONE-SITE.XML_ozone.server.default.replication" in script
-    assert "OZONE-SITE.XML_ozone.scm.block.size" not in script
     assert "${OZONE_DATANODES:-3}" in script
     assert 'up -d --scale datanode="${OZONE_DATANODES:-3}" scm om datanode s3g' in script
     compose_override = script.split("cat > \"${override_file}\" <<'OVERRIDE'", 1)[1].split("OVERRIDE", 1)[0]
     assert "OZONE-SITE.XML_ozone.scm.container.size" not in compose_override
+    assert "OZONE-SITE.XML_ozone.scm.block.size" not in compose_override
     assert "recon" not in script.split('up -d --scale datanode="${OZONE_DATANODES:-3}"', 1)[1].split("|| return 1", 1)[0]
     assert "httpfs" not in script.split('up -d --scale datanode="${OZONE_DATANODES:-3}"', 1)[1].split("|| return 1", 1)[0]
 
@@ -35,14 +35,15 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "OZONE_LOCAL_COMPOSE_FILE" in script
     assert "OZONE_LOCAL_COMPOSE_ENV_FILE" in script
     assert "OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=${OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT:-1}" in script
-    assert "OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-512MB}" in script
+    assert "OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-80MB}" in script
+    assert "OZONE-SITE.XML_ozone.scm.block.size=${OZONE_LOCAL_BLOCK_SIZE:-64MB}" in script
     assert "OZONE-SITE.XML_ozone.block.deleting.service.interval=${OZONE_LOCAL_BLOCK_DELETING_INTERVAL:-1s}" in script
     assert "OZONE-SITE.XML_hdds.scm.block.deleting.service.interval=${OZONE_LOCAL_SCM_BLOCK_DELETING_INTERVAL:-1s}" in script
     assert "ozone-local-data:/root/.ozone" in script
     assert "ozone\n      - local\n      - run" in script
     assert "OZONE_LOCAL_DATANODES:-1" in script
     assert "OZONE_LOCAL_STARTUP_TIMEOUT:-600s" in script
-    assert "OZONE_LOCAL_CONTAINER_SIZE:-512MB" in script
+    assert "OZONE_LOCAL_CONTAINER_SIZE:-80MB" in script
     assert "OZONE_LOCAL_TCP_TIMEOUT:-720" in script
     assert "OZONE_LOCAL_READY_TIMEOUT:-900" in script
 

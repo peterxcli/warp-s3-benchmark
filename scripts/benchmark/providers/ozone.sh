@@ -81,7 +81,8 @@ services:
       - OZONE_LOCAL_RECON_ENABLED=${OZONE_LOCAL_RECON_ENABLED:-false}
       - OZONE_LOCAL_STARTUP_TIMEOUT=${OZONE_LOCAL_STARTUP_TIMEOUT:-600s}
       - OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=${OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT:-1}
-      - OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-512MB}
+      - OZONE-SITE.XML_ozone.scm.container.size=${OZONE_LOCAL_CONTAINER_SIZE:-80MB}
+      - OZONE-SITE.XML_ozone.scm.block.size=${OZONE_LOCAL_BLOCK_SIZE:-64MB}
       - OZONE-SITE.XML_ozone.block.deleting.service.interval=${OZONE_LOCAL_BLOCK_DELETING_INTERVAL:-1s}
       - OZONE-SITE.XML_hdds.scm.block.deleting.service.interval=${OZONE_LOCAL_SCM_BLOCK_DELETING_INTERVAL:-1s}
       - OZONE-SITE.XML_ozone.block.deleting.service.workers=${OZONE_LOCAL_BLOCK_DELETING_WORKERS:-20}
