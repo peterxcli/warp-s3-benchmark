@@ -1,3 +1,5 @@
+import subprocess
+import textwrap
 from pathlib import Path
 
 
@@ -46,6 +48,83 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "OZONE_LOCAL_CONTAINER_SIZE:-80MB" in script
     assert "OZONE_LOCAL_TCP_TIMEOUT:-720" in script
     assert "OZONE_LOCAL_READY_TIMEOUT:-900" in script
+
+
+def test_ozone_local_jvm_pid_prefers_ozone_process_over_jcmd(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    jcmd = fake_bin / "jcmd"
+    jcmd.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            if [[ "$1" == "-l" ]]; then
+              cat <<'OUT'
+            41 jdk.jcmd/sun.tools.jcmd.JCmd -l
+            1234 org.apache.hadoop.ozone.MiniOzoneCluster
+            5678 com.example.OtherJvm
+            OUT
+            fi
+            """
+        ),
+        encoding="utf-8",
+    )
+    jcmd.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-lc",
+            f'PATH="{fake_bin}:$PATH"; source scripts/benchmark/providers/ozone.sh; ozone_local_jvm_pid',
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "1234"
+
+
+def test_ozone_local_jvm_pid_falls_back_to_first_non_jcmd_process(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    jcmd = fake_bin / "jcmd"
+    jcmd.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            if [[ "$1" == "-l" ]]; then
+              cat <<'OUT'
+            41 jdk.jcmd/sun.tools.jcmd.JCmd -l
+            2222 org.eclipse.jetty.start.Main
+            OUT
+            fi
+            """
+        ),
+        encoding="utf-8",
+    )
+    jcmd.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-lc",
+            f'PATH="{fake_bin}:$PATH"; source scripts/benchmark/providers/ozone.sh; ozone_local_jvm_pid',
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "2222"
+
+
+def test_workflow_exposes_targeted_ozone_jfr_profile_suite() -> None:
+    workflow = Path(".github/workflows/benchmark-nightly.yml").read_text(encoding="utf-8")
+
+    assert "- ozone-jfr" in workflow
 
 
 def test_ceph_provider_publishes_rgw_port_without_host_network() -> None:

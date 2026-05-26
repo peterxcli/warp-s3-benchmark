@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "duration_seconds": 30,
+    "objects": 512,
+    "analyze_duration": "5s"
+  },
+  "sizes": [
+    { "key": "small", "object_size": "128KiB" },
+    { "key": "medium", "object_size": "1MiB" },
+    { "key": "large", "object_size": "4MiB" }
+  ],
+  "concurrency": [
+    { "key": "c16", "value": 16 }
+  ],
+  "prefix_modes": [
+    { "key": "prefix", "noprefix": false }
+  ],
+  "workloads": [
+    {
+      "key": "put",
+      "command": "put",
+      "operation": "PUT",
+      "size_keys": ["small"],
+      "concurrency_keys": ["c16"],
+      "prefix_mode_keys": ["prefix"]
+    },
+    {
+      "key": "get",
+      "command": "get",
+      "operation": "GET",
+      "size_keys": ["medium"],
+      "concurrency_keys": ["c16"],
+      "prefix_mode_keys": ["prefix"],
+      "objects": 512
+    },
+    {
+      "key": "get-range",
+      "command": "get",
+      "operation": "GET",
+      "size_keys": ["large"],
+      "concurrency_keys": ["c16"],
+      "prefix_mode_keys": ["prefix"],
+      "extra_flags": ["--range"],
+      "objects": 256
+    }
+  ]
+}

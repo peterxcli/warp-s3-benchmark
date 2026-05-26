@@ -207,6 +207,38 @@ ozone_local_container_id() {
   fi
 }
 
+ozone_local_jvm_pid() {
+  jcmd -l 2>/dev/null | awk '
+    /jdk[.]jcmd|sun[.]tools[.]jcmd[.]JCmd|[[:space:]]JCmd([[:space:]]|$)/ {
+      next
+    }
+    first == "" {
+      first = $1
+    }
+    tolower($0) ~ /(org[.]apache[.]hadoop[.](ozone|hdds)|ozone|hdds)/ && preferred == "" {
+      preferred = $1
+    }
+    END {
+      if (preferred != "") {
+        print preferred
+      } else if (first != "") {
+        print first
+      }
+    }
+  '
+}
+
+ozone_local_jcmd_preamble() {
+  declare -f ozone_local_jvm_pid
+  cat <<'SCRIPT'
+printf '%s\n' 'jcmd -l:'
+jcmd -l 2>&1 || true
+pid="$(ozone_local_jvm_pid)"
+test -n "${pid}" || pid=1
+printf 'Selected JVM PID: %s\n' "${pid}"
+SCRIPT
+}
+
 provider_diagnostic_container_ids() {
   local compose_file
   local override_file
@@ -231,6 +263,7 @@ provider_diagnostics_start() {
 
   local diagnostics_dir
   local container_id
+  local jcmd_preamble
   diagnostics_dir="${OUTPUT_ROOT}/diagnostics"
   mkdir -p "${diagnostics_dir}"
   container_id="$(ozone_local_container_id 2>/dev/null || true)"
@@ -243,8 +276,14 @@ provider_diagnostics_start() {
   docker inspect "${container_id}" > "${diagnostics_dir}/container-inspect-start.json" 2>&1 || true
   docker stats --no-stream "${container_id}" > "${diagnostics_dir}/docker-stats-start.txt" 2>&1 || true
   docker exec "${container_id}" sh -lc 'cat /sys/fs/cgroup/cpu.stat; printf "\n--- io.stat ---\n"; cat /sys/fs/cgroup/io.stat 2>/dev/null || true; printf "\n--- memory.current ---\n"; cat /sys/fs/cgroup/memory.current 2>/dev/null || true' > "${diagnostics_dir}/cgroup-start.txt" 2>&1 || true
-  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" VM.version; jcmd "${pid}" VM.flags; jcmd "${pid}" GC.heap_info; jcmd "${pid}" Thread.print' > "${diagnostics_dir}/jcmd-start.txt" 2>&1 || true
-  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" JFR.start name=warp_diag settings=profile filename=/tmp/ozone-warp-diagnostic.jfr dumponexit=true' > "${diagnostics_dir}/jfr-start.txt" 2>&1 || true
+  jcmd_preamble="$(ozone_local_jcmd_preamble)"
+  docker exec "${container_id}" sh -lc "${jcmd_preamble}
+jcmd \"\${pid}\" VM.version
+jcmd \"\${pid}\" VM.flags
+jcmd \"\${pid}\" GC.heap_info
+jcmd \"\${pid}\" Thread.print" > "${diagnostics_dir}/jcmd-start.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc "${jcmd_preamble}
+jcmd \"\${pid}\" JFR.start name=warp_diag settings=profile filename=/tmp/ozone-warp-diagnostic.jfr dumponexit=true" > "${diagnostics_dir}/jfr-start.txt" 2>&1 || true
 
   (
     while true; do
@@ -266,6 +305,7 @@ provider_diagnostics_collect() {
 
   local diagnostics_dir
   local container_id
+  local jcmd_preamble
   local sampler_pid
   diagnostics_dir="${OUTPUT_ROOT}/diagnostics"
   mkdir -p "${diagnostics_dir}"
@@ -284,7 +324,12 @@ provider_diagnostics_collect() {
   docker inspect "${container_id}" > "${diagnostics_dir}/container-inspect-end.json" 2>&1 || true
   docker stats --no-stream "${container_id}" > "${diagnostics_dir}/docker-stats-end.txt" 2>&1 || true
   docker exec "${container_id}" sh -lc 'cat /sys/fs/cgroup/cpu.stat; printf "\n--- io.stat ---\n"; cat /sys/fs/cgroup/io.stat 2>/dev/null || true; printf "\n--- memory.current ---\n"; cat /sys/fs/cgroup/memory.current 2>/dev/null || true' > "${diagnostics_dir}/cgroup-end.txt" 2>&1 || true
-  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" Thread.print; jcmd "${pid}" GC.heap_info; jcmd "${pid}" JFR.check; jcmd "${pid}" JFR.stop name=warp_diag filename=/tmp/ozone-warp-diagnostic.jfr' > "${diagnostics_dir}/jcmd-end.txt" 2>&1 || true
+  jcmd_preamble="$(ozone_local_jcmd_preamble)"
+  docker exec "${container_id}" sh -lc "${jcmd_preamble}
+jcmd \"\${pid}\" Thread.print
+jcmd \"\${pid}\" GC.heap_info
+jcmd \"\${pid}\" JFR.check
+jcmd \"\${pid}\" JFR.stop name=warp_diag filename=/tmp/ozone-warp-diagnostic.jfr" > "${diagnostics_dir}/jcmd-end.txt" 2>&1 || true
   docker exec "${container_id}" sh -lc 'test -s /tmp/ozone-warp-diagnostic.jfr && jfr summary /tmp/ozone-warp-diagnostic.jfr' > "${diagnostics_dir}/jfr-summary.txt" 2>&1 || true
   docker cp "${container_id}:/tmp/ozone-warp-diagnostic.jfr" "${diagnostics_dir}/ozone-warp-diagnostic.jfr" >/dev/null 2>&1 || true
 }

@@ -23,6 +23,7 @@ on:
         options:
           - smoke
           - extended
+          - ozone-jfr
       warp_autoterm:
         description: "Enable Warp --autoterm for measured profiles."
         required: false
