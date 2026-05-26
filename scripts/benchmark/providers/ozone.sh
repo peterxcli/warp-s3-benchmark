@@ -207,11 +207,25 @@ ozone_local_container_id() {
   fi
 }
 
+provider_diagnostic_container_ids() {
+  local compose_file
+  local override_file
+  if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" == "local" ]]; then
+    ozone_local_container_id
+  else
+    compose_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.yaml"
+    override_file="${OUTPUT_ROOT}/ozone-compose/docker-compose.override.yaml"
+    if [[ -f "${compose_file}" ]]; then
+      docker_compose -f "${compose_file}" -f "${override_file}" ps -q
+    fi
+  fi
+}
+
 provider_diagnostics_start() {
   if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" != "local" ]]; then
     return 0
   fi
-  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-true}" != "true" ]]; then
+  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-${BENCHMARK_DIAGNOSTICS:-false}}" != "true" ]]; then
     return 0
   fi
 
@@ -246,7 +260,7 @@ provider_diagnostics_collect() {
   if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" != "local" ]]; then
     return 0
   fi
-  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-true}" != "true" ]]; then
+  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-${BENCHMARK_DIAGNOSTICS:-false}}" != "true" ]]; then
     return 0
   fi
 

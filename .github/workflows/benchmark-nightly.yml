@@ -23,6 +23,16 @@ on:
         options:
           - smoke
           - extended
+      warp_autoterm:
+        description: "Enable Warp --autoterm for measured profiles."
+        required: false
+        default: true
+        type: boolean
+      collect_diagnostics:
+        description: "Collect provider container diagnostics during measured profiles."
+        required: false
+        default: false
+        type: boolean
       ozone_deployment_mode:
         description: "Ozone deployment mode."
         required: false
@@ -204,10 +214,14 @@ jobs:
           OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT: ${{ github.event.inputs.ozone_local_pipeline_owner_container_count || '1' }}
           OZONE_LOCAL_CONTAINER_SIZE: ${{ github.event.inputs.ozone_local_container_size || '80MB' }}
           OZONE_LOCAL_BLOCK_SIZE: ${{ github.event.inputs.ozone_local_block_size || '64MB' }}
+          WARP_AUTOTERM: ${{ github.event.inputs.warp_autoterm || 'true' }}
+          BENCHMARK_DIAGNOSTICS: ${{ github.event.inputs.collect_diagnostics || 'false' }}
         run: |
           set -euo pipefail
           export PROFILE_FILE="${GITHUB_WORKSPACE}/benchmark/profiles/${PROFILE_SUITE}.json"
           echo "Using profile suite: ${PROFILE_SUITE} (${PROFILE_FILE})"
+          echo "Warp autoterm: ${WARP_AUTOTERM}"
+          echo "Provider diagnostics: ${BENCHMARK_DIAGNOSTICS}"
           bash scripts/run-benchmark-provider.sh "${PROVIDER}"
 
       - name: Upload provider artifact

@@ -63,8 +63,11 @@ else
 fi
 export WARP_HOST="${WARP_HOST:-}" WARP_ACCESS_KEY="${WARP_ACCESS_KEY:-}" WARP_SECRET_KEY="${WARP_SECRET_KEY:-}" STARTUP_SECONDS WARMUP_SECONDS WARMUP_STATUS WARMUP_LOG_FILE ADAPTER_STATUS
 
-if [[ "${ADAPTER_STATUS}" == "completed" ]] && declare -F provider_diagnostics_start >/dev/null; then
-  provider_diagnostics_start || true
+if [[ "${ADAPTER_STATUS}" == "completed" ]]; then
+  generic_provider_diagnostics_start || true
+  if declare -F provider_diagnostics_start >/dev/null; then
+    provider_diagnostics_start || true
+  fi
 fi
 
 python3 - "${PROFILE_FILE}" "${WARP_BINARY}" "${WARP_HOST:-}" "${WARP_ACCESS_KEY:-}" "${WARP_SECRET_KEY:-}" "${WARP_BUCKET}" "${OUTPUT_ROOT}" "${METADATA_FILE}" "${COMMANDS_FILE}" <<'PY'
@@ -173,8 +176,11 @@ PY
   done < "${COMMANDS_FILE}"
 fi
 
-if [[ "${ADAPTER_STATUS}" == "completed" ]] && declare -F provider_diagnostics_collect >/dev/null; then
-  provider_diagnostics_collect || true
+if [[ "${ADAPTER_STATUS}" == "completed" ]]; then
+  if declare -F provider_diagnostics_collect >/dev/null; then
+    provider_diagnostics_collect || true
+  fi
+  generic_provider_diagnostics_collect || true
 fi
 
 provider_logs > "${OUTPUT_ROOT}/provider.log" 2>&1 || true

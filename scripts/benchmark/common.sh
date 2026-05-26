@@ -219,6 +219,100 @@ remove_container() {
   docker rm -f "${container}" >/dev/null 2>&1 || true
 }
 
+benchmark_diagnostics_enabled() {
+  case "${BENCHMARK_DIAGNOSTICS:-false}" in
+    true|TRUE|1|yes|YES|on|ON)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+benchmark_diagnostic_container_ids() {
+  if declare -F provider_diagnostic_container_ids >/dev/null; then
+    provider_diagnostic_container_ids
+    return
+  fi
+  docker ps -aq --filter "name=^/$(provider_container_name "${PROVIDER}")$"
+}
+
+benchmark_diagnostic_safe_name() {
+  local container="$1"
+  local name
+  name="$(docker inspect --format '{{.Name}}' "${container}" 2>/dev/null | sed 's#^/##' || true)"
+  if [[ -z "${name}" ]]; then
+    name="${container}"
+  fi
+  printf '%s' "${name}" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+benchmark_diagnostic_snapshot() {
+  local phase="$1"
+  local diagnostics_dir="${OUTPUT_ROOT}/diagnostics/generic"
+  local container
+  local safe_name
+  local -a containers
+  mkdir -p "${diagnostics_dir}"
+  mapfile -t containers < <(benchmark_diagnostic_container_ids | sed '/^$/d')
+  if (( ${#containers[@]} == 0 )); then
+    benchmark_log "Diagnostics ${phase}: no containers found for ${PROVIDER}"
+    printf 'No containers found for provider %s\n' "${PROVIDER}" > "${diagnostics_dir}/${phase}-containers.txt"
+    return 0
+  fi
+
+  docker ps --no-trunc --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' \
+    > "${diagnostics_dir}/${phase}-docker-ps.txt" 2>&1 || true
+  printf '%s\n' "${containers[@]}" > "${diagnostics_dir}/${phase}-container-ids.txt"
+  for container in "${containers[@]}"; do
+    safe_name="$(benchmark_diagnostic_safe_name "${container}")"
+    docker inspect "${container}" > "${diagnostics_dir}/${phase}-${safe_name}-inspect.json" 2>&1 || true
+    docker stats --no-stream "${container}" > "${diagnostics_dir}/${phase}-${safe_name}-stats.txt" 2>&1 || true
+    docker top "${container}" -eo pid,ppid,nlwp,pcpu,pmem,comm,args \
+      > "${diagnostics_dir}/${phase}-${safe_name}-top.txt" 2>&1 \
+      || docker top "${container}" > "${diagnostics_dir}/${phase}-${safe_name}-top.txt" 2>&1 \
+      || true
+    docker exec "${container}" sh -lc 'cat /sys/fs/cgroup/cpu.stat 2>/dev/null || true; printf "\n--- io.stat ---\n"; cat /sys/fs/cgroup/io.stat 2>/dev/null || true; printf "\n--- memory.current ---\n"; cat /sys/fs/cgroup/memory.current 2>/dev/null || true; printf "\n--- pids.current ---\n"; cat /sys/fs/cgroup/pids.current 2>/dev/null || true; printf "\n--- pids.max ---\n"; cat /sys/fs/cgroup/pids.max 2>/dev/null || true' \
+      > "${diagnostics_dir}/${phase}-${safe_name}-cgroup.txt" 2>&1 || true
+  done
+}
+
+generic_provider_diagnostics_start() {
+  benchmark_diagnostics_enabled || return 0
+  local diagnostics_dir="${OUTPUT_ROOT}/diagnostics/generic"
+  local interval="${BENCHMARK_DIAGNOSTICS_INTERVAL:-5}"
+  mkdir -p "${diagnostics_dir}"
+  benchmark_log "Starting generic diagnostics for ${PROVIDER}"
+  benchmark_diagnostic_snapshot start
+  (
+    while true; do
+      date -u '+%Y-%m-%dT%H:%M:%SZ'
+      mapfile -t containers < <(benchmark_diagnostic_container_ids | sed '/^$/d')
+      if (( ${#containers[@]} == 0 )); then
+        printf 'No containers found for provider %s\n' "${PROVIDER}"
+      else
+        docker stats --no-stream "${containers[@]}" || true
+      fi
+      sleep "${interval}"
+    done
+  ) > "${diagnostics_dir}/docker-stats-samples.txt" 2>&1 &
+  printf '%s\n' "$!" > "${diagnostics_dir}/docker-stats-sampler.pid"
+}
+
+generic_provider_diagnostics_collect() {
+  benchmark_diagnostics_enabled || return 0
+  local diagnostics_dir="${OUTPUT_ROOT}/diagnostics/generic"
+  local sampler_pid
+  mkdir -p "${diagnostics_dir}"
+  if [[ -f "${diagnostics_dir}/docker-stats-sampler.pid" ]]; then
+    sampler_pid="$(cat "${diagnostics_dir}/docker-stats-sampler.pid")"
+    kill "${sampler_pid}" >/dev/null 2>&1 || true
+  fi
+  benchmark_log "Collecting generic diagnostics for ${PROVIDER}"
+  benchmark_diagnostic_snapshot end
+}
+
 write_runner_json() {
   python3 - <<'PY'
 import json

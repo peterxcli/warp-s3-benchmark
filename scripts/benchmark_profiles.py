@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -118,6 +119,7 @@ def render_warp_command(
     benchdata_path: str,
     analyze_out_path: str,
 ) -> list[str]:
+    autoterm_enabled = os.environ.get("WARP_AUTOTERM", "true").lower() not in {"0", "false", "no", "off"}
     command = [
         warp_binary,
         profile.command,
@@ -131,8 +133,9 @@ def render_warp_command(
         f"--benchdata={benchdata_path}",
         f"--analyze.out={analyze_out_path}",
         f"--analyze.dur={profile.analyze_duration}",
-        "--autoterm",
     ]
+    if autoterm_enabled:
+        command.append("--autoterm")
     if profile.include_objects:
         command.append(f"--objects={profile.objects}")
     if profile.noprefix:
