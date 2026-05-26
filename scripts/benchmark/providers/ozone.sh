@@ -193,3 +193,84 @@ provider_logs() {
     fi
   fi
 }
+
+ozone_local_container_id() {
+  local compose_file
+  compose_file="${OZONE_LOCAL_COMPOSE_FILE:-${OUTPUT_ROOT}/ozone-local-compose/docker-compose.yaml}"
+  if [[ ! -f "${compose_file}" ]]; then
+    return 1
+  fi
+  if [[ -n "${OZONE_LOCAL_COMPOSE_ENV_FILE:-}" && -f "${OZONE_LOCAL_COMPOSE_ENV_FILE}" ]]; then
+    docker_compose --env-file "${OZONE_LOCAL_COMPOSE_ENV_FILE}" -f "${compose_file}" ps -q local
+  else
+    docker_compose -f "${compose_file}" ps -q local
+  fi
+}
+
+provider_diagnostics_start() {
+  if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" != "local" ]]; then
+    return 0
+  fi
+  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-true}" != "true" ]]; then
+    return 0
+  fi
+
+  local diagnostics_dir
+  local container_id
+  diagnostics_dir="${OUTPUT_ROOT}/diagnostics"
+  mkdir -p "${diagnostics_dir}"
+  container_id="$(ozone_local_container_id 2>/dev/null || true)"
+  if [[ -z "${container_id}" ]]; then
+    benchmark_log "Ozone diagnostics skipped: local container not found"
+    return 0
+  fi
+
+  benchmark_log "Starting Ozone local diagnostics for ${container_id}"
+  docker inspect "${container_id}" > "${diagnostics_dir}/container-inspect-start.json" 2>&1 || true
+  docker stats --no-stream "${container_id}" > "${diagnostics_dir}/docker-stats-start.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'cat /sys/fs/cgroup/cpu.stat; printf "\n--- io.stat ---\n"; cat /sys/fs/cgroup/io.stat 2>/dev/null || true; printf "\n--- memory.current ---\n"; cat /sys/fs/cgroup/memory.current 2>/dev/null || true' > "${diagnostics_dir}/cgroup-start.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" VM.version; jcmd "${pid}" VM.flags; jcmd "${pid}" GC.heap_info; jcmd "${pid}" Thread.print' > "${diagnostics_dir}/jcmd-start.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" JFR.start name=warp_diag settings=profile filename=/tmp/ozone-warp-diagnostic.jfr dumponexit=true' > "${diagnostics_dir}/jfr-start.txt" 2>&1 || true
+
+  (
+    while true; do
+      date -u '+%Y-%m-%dT%H:%M:%SZ'
+      docker stats --no-stream "${container_id}" || true
+      sleep "${OZONE_DIAGNOSTICS_STATS_INTERVAL:-5}"
+    done
+  ) > "${diagnostics_dir}/docker-stats-samples.txt" 2>&1 &
+  printf '%s\n' "$!" > "${diagnostics_dir}/docker-stats-sampler.pid"
+}
+
+provider_diagnostics_collect() {
+  if [[ "${OZONE_DEPLOYMENT_MODE:-compose}" != "local" ]]; then
+    return 0
+  fi
+  if [[ "${OZONE_DIAGNOSTICS_ENABLED:-true}" != "true" ]]; then
+    return 0
+  fi
+
+  local diagnostics_dir
+  local container_id
+  local sampler_pid
+  diagnostics_dir="${OUTPUT_ROOT}/diagnostics"
+  mkdir -p "${diagnostics_dir}"
+  if [[ -f "${diagnostics_dir}/docker-stats-sampler.pid" ]]; then
+    sampler_pid="$(cat "${diagnostics_dir}/docker-stats-sampler.pid")"
+    kill "${sampler_pid}" >/dev/null 2>&1 || true
+  fi
+
+  container_id="$(ozone_local_container_id 2>/dev/null || true)"
+  if [[ -z "${container_id}" ]]; then
+    benchmark_log "Ozone diagnostics collect skipped: local container not found"
+    return 0
+  fi
+
+  benchmark_log "Collecting Ozone local diagnostics for ${container_id}"
+  docker inspect "${container_id}" > "${diagnostics_dir}/container-inspect-end.json" 2>&1 || true
+  docker stats --no-stream "${container_id}" > "${diagnostics_dir}/docker-stats-end.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'cat /sys/fs/cgroup/cpu.stat; printf "\n--- io.stat ---\n"; cat /sys/fs/cgroup/io.stat 2>/dev/null || true; printf "\n--- memory.current ---\n"; cat /sys/fs/cgroup/memory.current 2>/dev/null || true' > "${diagnostics_dir}/cgroup-end.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'pid="$(jcmd -l 2>/dev/null | awk "NR==1 {print \$1}")"; test -n "${pid}" || pid=1; jcmd "${pid}" Thread.print; jcmd "${pid}" GC.heap_info; jcmd "${pid}" JFR.check; jcmd "${pid}" JFR.stop name=warp_diag filename=/tmp/ozone-warp-diagnostic.jfr' > "${diagnostics_dir}/jcmd-end.txt" 2>&1 || true
+  docker exec "${container_id}" sh -lc 'test -s /tmp/ozone-warp-diagnostic.jfr && jfr summary /tmp/ozone-warp-diagnostic.jfr' > "${diagnostics_dir}/jfr-summary.txt" 2>&1 || true
+  docker cp "${container_id}:/tmp/ozone-warp-diagnostic.jfr" "${diagnostics_dir}/ozone-warp-diagnostic.jfr" >/dev/null 2>&1 || true
+}
