@@ -82,6 +82,11 @@ on:
         required: false
         default: "true"
         type: string
+      ozone_local_stream_readblock_enable:
+        description: "Enable Ozone client streaming ReadBlock in local mode."
+        required: false
+        default: "false"
+        type: string
 
 permissions:
   contents: write
@@ -227,6 +232,7 @@ jobs:
           OZONE_LOCAL_BLOCK_SIZE: ${{ github.event.inputs.ozone_local_block_size || '64MB' }}
           OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE: ${{ github.event.inputs.ozone_local_read_netty_chunked_nio_file || 'false' }}
           OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM: ${{ github.event.inputs.ozone_local_client_verify_checksum || 'true' }}
+          OZONE_LOCAL_STREAM_READBLOCK_ENABLE: ${{ github.event.inputs.ozone_local_stream_readblock_enable || 'false' }}
           WARP_AUTOTERM: ${{ github.event.inputs.warp_autoterm || 'true' }}
           BENCHMARK_DIAGNOSTICS: ${{ github.event.inputs.collect_diagnostics || 'false' }}
         run: |

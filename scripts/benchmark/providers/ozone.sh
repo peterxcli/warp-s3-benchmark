@@ -89,6 +89,7 @@ services:
       - OZONE-SITE.XML_hdds.scm.block.deletion.per-interval.max=${OZONE_LOCAL_SCM_BLOCK_DELETION_LIMIT:-500000}
       - OZONE-SITE.XML_ozone.chunk.read.netty.ChunkedNioFile=${OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE:-false}
       - OZONE-SITE.XML_ozone.client.verify.checksum=${OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM:-true}
+      - OZONE-SITE.XML_ozone.client.stream.readblock.enable=${OZONE_LOCAL_STREAM_READBLOCK_ENABLE:-false}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:
