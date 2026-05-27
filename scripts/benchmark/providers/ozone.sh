@@ -239,6 +239,25 @@ printf 'Selected JVM PID: %s\n' "${pid}"
 SCRIPT
 }
 
+ozone_jvm_pids() {
+  jcmd -l 2>/dev/null | awk '
+    /jdk[.]jcmd|sun[.]tools[.]jcmd[.]JCmd|[[:space:]]JCmd([[:space:]]|$)/ {
+      next
+    }
+    NF > 0 {
+      print $1
+    }
+  '
+}
+
+ozone_jvm_pids_preamble() {
+  declare -f ozone_jvm_pids
+  cat <<'SCRIPT'
+printf '%s\n' 'jcmd -l:'
+jcmd -l 2>&1 || true
+SCRIPT
+}
+
 provider_diagnostic_container_ids() {
   local compose_file
   local override_file
@@ -251,6 +270,89 @@ provider_diagnostic_container_ids() {
       docker_compose -f "${compose_file}" -f "${override_file}" ps -q
     fi
   fi
+}
+
+provider_profile_diagnostics_start() {
+  benchmark_diagnostics_enabled || return 0
+
+  local profile_id="$1"
+  local safe_profile
+  local recording_name
+  local diagnostics_dir
+  local container
+  local safe_container
+  local jcmd_preamble
+  local -a containers
+  safe_profile="$(benchmark_diagnostic_safe_token "${profile_id}")"
+  recording_name="warp_${safe_profile}"
+  recording_name="${recording_name//-/_}"
+  recording_name="${recording_name//./_}"
+  diagnostics_dir="${OUTPUT_ROOT}/diagnostics/profiles/${safe_profile}/ozone-jfr"
+  mkdir -p "${diagnostics_dir}"
+  mapfile -t containers < <(provider_diagnostic_container_ids | sed '/^$/d')
+  jcmd_preamble="$(ozone_jvm_pids_preamble)"
+
+  for container in "${containers[@]}"; do
+    safe_container="$(benchmark_diagnostic_safe_name "${container}")"
+    mkdir -p "${diagnostics_dir}/${safe_container}"
+    docker exec "${container}" sh -lc "${jcmd_preamble}
+for pid in \$(ozone_jvm_pids); do
+  printf '\n=== JFR start pid %s ===\n' \"\${pid}\"
+  jcmd \"\${pid}\" JFR.start name=${recording_name} settings=profile filename=/tmp/${recording_name}-\${pid}.jfr dumponexit=true
+done" > "${diagnostics_dir}/${safe_container}/jfr-start.txt" 2>&1 || true
+  done
+}
+
+provider_profile_diagnostics_collect() {
+  benchmark_diagnostics_enabled || return 0
+
+  local profile_id="$1"
+  local safe_profile
+  local recording_name
+  local diagnostics_dir
+  local container
+  local safe_container
+  local jcmd_preamble
+  local -a containers
+  safe_profile="$(benchmark_diagnostic_safe_token "${profile_id}")"
+  recording_name="warp_${safe_profile}"
+  recording_name="${recording_name//-/_}"
+  recording_name="${recording_name//./_}"
+  diagnostics_dir="${OUTPUT_ROOT}/diagnostics/profiles/${safe_profile}/ozone-jfr"
+  mkdir -p "${diagnostics_dir}"
+  mapfile -t containers < <(provider_diagnostic_container_ids | sed '/^$/d')
+  jcmd_preamble="$(ozone_jvm_pids_preamble)"
+
+  for container in "${containers[@]}"; do
+    safe_container="$(benchmark_diagnostic_safe_name "${container}")"
+    mkdir -p "${diagnostics_dir}/${safe_container}"
+    docker exec "${container}" sh -lc "${jcmd_preamble}
+for pid in \$(ozone_jvm_pids); do
+  recording=/tmp/${recording_name}-\${pid}.jfr
+  printf '\n=== Thread.print pid %s ===\n' \"\${pid}\"
+  jcmd \"\${pid}\" Thread.print
+  printf '\n=== GC.heap_info pid %s ===\n' \"\${pid}\"
+  jcmd \"\${pid}\" GC.heap_info
+  printf '\n=== JFR.check pid %s ===\n' \"\${pid}\"
+  jcmd \"\${pid}\" JFR.check
+  printf '\n=== JFR.stop pid %s ===\n' \"\${pid}\"
+  jcmd \"\${pid}\" JFR.stop name=${recording_name} filename=\"\${recording}\"
+  if test -s \"\${recording}\"; then
+    printf '\n=== JFR summary pid %s ===\n' \"\${pid}\"
+    jfr summary \"\${recording}\" || true
+    printf '\n=== JFR hot-methods pid %s ===\n' \"\${pid}\"
+    jfr view --width 160 hot-methods \"\${recording}\" || true
+    printf '\n=== JFR allocation-by-site pid %s ===\n' \"\${pid}\"
+    jfr view --width 160 allocation-by-site \"\${recording}\" || true
+    printf '\n=== JFR container-cpu-usage pid %s ===\n' \"\${pid}\"
+    jfr view --width 160 container-cpu-usage \"\${recording}\" || true
+  fi
+done
+tar -C /tmp -czf /tmp/${recording_name}-jfr.tgz ${recording_name}-*.jfr 2>/dev/null || true" \
+      > "${diagnostics_dir}/${safe_container}/jfr-end.txt" 2>&1 || true
+    docker cp "${container}:/tmp/${recording_name}-jfr.tgz" \
+      "${diagnostics_dir}/${safe_container}/jfr-recordings.tgz" >/dev/null 2>&1 || true
+  done
 }
 
 provider_diagnostics_start() {

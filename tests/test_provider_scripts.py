@@ -121,6 +121,69 @@ def test_ozone_local_jvm_pid_falls_back_to_first_non_jcmd_process(tmp_path: Path
     assert result.stdout.strip() == "2222"
 
 
+def test_ozone_jvm_pids_lists_all_non_jcmd_processes(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    jcmd = fake_bin / "jcmd"
+    jcmd.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env bash
+            if [[ "$1" == "-l" ]]; then
+              cat <<'OUT'
+            41 jdk.jcmd/sun.tools.jcmd.JCmd -l
+            1234 org.apache.hadoop.ozone.MiniOzoneCluster
+            5678 org.apache.hadoop.ozone.om.OzoneManager
+            9012 org.apache.hadoop.hdds.scm.server.StorageContainerManager
+            OUT
+            fi
+            """
+        ),
+        encoding="utf-8",
+    )
+    jcmd.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            "bash",
+            "-lc",
+            f'PATH="{fake_bin}:$PATH"; source scripts/benchmark/providers/ozone.sh; ozone_jvm_pids',
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["1234", "5678", "9012"]
+
+
+def test_ozone_profile_diagnostics_collects_per_profile_jfr_views() -> None:
+    script = provider_script("ozone")
+
+    assert "provider_profile_diagnostics_start()" in script
+    assert "provider_profile_diagnostics_collect()" in script
+    assert "for pid in \\$(ozone_jvm_pids); do" in script
+    assert "JFR.start name=${recording_name}" in script
+    assert "jfr view --width 160 hot-methods" in script
+    assert "jfr view --width 160 allocation-by-site" in script
+    assert "jfr-recordings.tgz" in script
+
+
+def test_profile_diagnostics_wrap_each_warp_profile() -> None:
+    runner = Path("scripts/run-benchmark-provider.sh").read_text(encoding="utf-8")
+    common = Path("scripts/benchmark/common.sh").read_text(encoding="utf-8")
+
+    assert 'generic_profile_diagnostics_start "${profile_id}"' in runner
+    assert 'provider_profile_diagnostics_start "${profile_id}"' in runner
+    assert 'run_benchmark_profile_command "${profile_id}"' in runner
+    assert 'provider_profile_diagnostics_collect "${profile_id}"' in runner
+    assert 'generic_profile_diagnostics_collect "${profile_id}"' in runner
+    assert "run_benchmark_profile_command()" in common
+    assert "/usr/bin/time -v -o" in common
+    assert "warp-time.txt" in common
+
+
 def test_workflow_exposes_targeted_ozone_jfr_profile_suite() -> None:
     workflow = Path(".github/workflows/benchmark-nightly.yml").read_text(encoding="utf-8")
 

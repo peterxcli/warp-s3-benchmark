@@ -151,10 +151,18 @@ PY
 if [[ "${ADAPTER_STATUS}" == "completed" ]]; then
   while IFS=$'\t' read -r profile_id analyze_text command_line; do
     benchmark_log "Running ${PROVIDER} ${profile_id}"
+    if declare -F provider_profile_diagnostics_start >/dev/null; then
+      provider_profile_diagnostics_start "${profile_id}" || true
+    fi
+    generic_profile_diagnostics_start "${profile_id}" || true
     set +e
-    eval "${command_line}" >"${OUTPUT_ROOT}/${analyze_text}" 2>&1
+    run_benchmark_profile_command "${profile_id}" "${command_line}" "${OUTPUT_ROOT}/${analyze_text}"
     exit_code="$?"
     set -e
+    generic_profile_diagnostics_collect "${profile_id}" || true
+    if declare -F provider_profile_diagnostics_collect >/dev/null; then
+      provider_profile_diagnostics_collect "${profile_id}" || true
+    fi
     python3 - "${METADATA_FILE}" "${profile_id}" "${exit_code}" <<'PY'
 import json
 import sys

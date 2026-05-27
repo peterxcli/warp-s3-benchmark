@@ -248,6 +248,11 @@ benchmark_diagnostic_safe_name() {
   printf '%s' "${name}" | tr -c 'A-Za-z0-9_.-' '_'
 }
 
+benchmark_diagnostic_safe_token() {
+  local value="$1"
+  printf '%s' "${value}" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
 benchmark_diagnostic_snapshot() {
   local phase="$1"
   local diagnostics_dir="${OUTPUT_ROOT}/diagnostics/generic"
@@ -300,6 +305,24 @@ generic_provider_diagnostics_start() {
   printf '%s\n' "$!" > "${diagnostics_dir}/docker-stats-sampler.pid"
 }
 
+generic_profile_diagnostics_start() {
+  benchmark_diagnostics_enabled || return 0
+  local profile_id="$1"
+  local safe_profile
+  safe_profile="$(benchmark_diagnostic_safe_token "${profile_id}")"
+  benchmark_log "Starting profile diagnostics for ${PROVIDER} ${profile_id}"
+  benchmark_diagnostic_snapshot "profile-${safe_profile}-start"
+}
+
+generic_profile_diagnostics_collect() {
+  benchmark_diagnostics_enabled || return 0
+  local profile_id="$1"
+  local safe_profile
+  safe_profile="$(benchmark_diagnostic_safe_token "${profile_id}")"
+  benchmark_log "Collecting profile diagnostics for ${PROVIDER} ${profile_id}"
+  benchmark_diagnostic_snapshot "profile-${safe_profile}-end"
+}
+
 generic_provider_diagnostics_collect() {
   benchmark_diagnostics_enabled || return 0
   local diagnostics_dir="${OUTPUT_ROOT}/diagnostics/generic"
@@ -311,6 +334,28 @@ generic_provider_diagnostics_collect() {
   fi
   benchmark_log "Collecting generic diagnostics for ${PROVIDER}"
   benchmark_diagnostic_snapshot end
+}
+
+run_benchmark_profile_command() {
+  local profile_id="$1"
+  local command_line="$2"
+  local output_file="$3"
+  local diagnostics_dir
+  local safe_profile
+
+  if benchmark_diagnostics_enabled; then
+    safe_profile="$(benchmark_diagnostic_safe_token "${profile_id}")"
+    diagnostics_dir="${OUTPUT_ROOT}/diagnostics/profiles/${safe_profile}"
+    mkdir -p "${diagnostics_dir}"
+    printf '%s\n' "${command_line}" > "${diagnostics_dir}/warp-command.txt"
+    if [[ -x /usr/bin/time ]] && /usr/bin/time -v true >/dev/null 2>&1; then
+      /usr/bin/time -v -o "${diagnostics_dir}/warp-time.txt" \
+        bash -lc "${command_line}" > "${output_file}" 2>&1
+      return "$?"
+    fi
+  fi
+
+  bash -lc "${command_line}" > "${output_file}" 2>&1
 }
 
 write_runner_json() {
