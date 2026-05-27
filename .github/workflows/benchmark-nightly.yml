@@ -103,6 +103,11 @@ on:
         required: false
         default: 4MB
         type: string
+      ozone_local_datastream_close_putblock_compatibility:
+        description: "Send Ozone datastream close PutBlock compatibility trailer."
+        required: false
+        default: "true"
+        type: string
 
 permissions:
   contents: write
@@ -252,6 +257,7 @@ jobs:
           OZONE_LOCAL_RATIS_ENABLED: ${{ github.event.inputs.ozone_local_ratis_enabled || 'false' }}
           OZONE_LOCAL_DATASTREAM_ENABLED: ${{ github.event.inputs.ozone_local_datastream_enabled || 'false' }}
           OZONE_LOCAL_DATASTREAM_AUTO_THRESHOLD: ${{ github.event.inputs.ozone_local_datastream_auto_threshold || '4MB' }}
+          OZONE_LOCAL_DATASTREAM_CLOSE_PUTBLOCK_COMPATIBILITY: ${{ github.event.inputs.ozone_local_datastream_close_putblock_compatibility || 'true' }}
           WARP_AUTOTERM: ${{ github.event.inputs.warp_autoterm || 'true' }}
           BENCHMARK_DIAGNOSTICS: ${{ github.event.inputs.collect_diagnostics || 'false' }}
         run: |

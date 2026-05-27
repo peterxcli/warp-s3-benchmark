@@ -93,6 +93,7 @@ services:
       - OZONE-SITE.XML_hdds.container.ratis.enabled=${OZONE_LOCAL_RATIS_ENABLED:-false}
       - OZONE-SITE.XML_hdds.container.ratis.datastream.enabled=${OZONE_LOCAL_DATASTREAM_ENABLED:-false}
       - OZONE-SITE.XML_ozone.fs.datastream.auto.threshold=${OZONE_LOCAL_DATASTREAM_AUTO_THRESHOLD:-4MB}
+      - OZONE-SITE.XML_ozone.client.datastream.close.putblock.compatibility=${OZONE_LOCAL_DATASTREAM_CLOSE_PUTBLOCK_COMPATIBILITY:-true}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:
