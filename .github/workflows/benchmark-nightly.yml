@@ -72,6 +72,16 @@ on:
         required: false
         default: 64MB
         type: string
+      ozone_local_read_netty_chunked_nio_file:
+        description: "Enable Ozone local DN reads through Netty ChunkedNioFile."
+        required: false
+        default: "false"
+        type: string
+      ozone_local_client_verify_checksum:
+        description: "Enable Ozone client checksum verification in local mode."
+        required: false
+        default: "true"
+        type: string
 
 permissions:
   contents: write
@@ -215,6 +225,8 @@ jobs:
           OZONE_LOCAL_PIPELINE_OWNER_CONTAINER_COUNT: ${{ github.event.inputs.ozone_local_pipeline_owner_container_count || '1' }}
           OZONE_LOCAL_CONTAINER_SIZE: ${{ github.event.inputs.ozone_local_container_size || '80MB' }}
           OZONE_LOCAL_BLOCK_SIZE: ${{ github.event.inputs.ozone_local_block_size || '64MB' }}
+          OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE: ${{ github.event.inputs.ozone_local_read_netty_chunked_nio_file || 'false' }}
+          OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM: ${{ github.event.inputs.ozone_local_client_verify_checksum || 'true' }}
           WARP_AUTOTERM: ${{ github.event.inputs.warp_autoterm || 'true' }}
           BENCHMARK_DIAGNOSTICS: ${{ github.event.inputs.collect_diagnostics || 'false' }}
         run: |

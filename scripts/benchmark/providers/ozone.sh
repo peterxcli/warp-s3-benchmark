@@ -87,6 +87,8 @@ services:
       - OZONE-SITE.XML_hdds.scm.block.deleting.service.interval=${OZONE_LOCAL_SCM_BLOCK_DELETING_INTERVAL:-1s}
       - OZONE-SITE.XML_ozone.block.deleting.service.workers=${OZONE_LOCAL_BLOCK_DELETING_WORKERS:-20}
       - OZONE-SITE.XML_hdds.scm.block.deletion.per-interval.max=${OZONE_LOCAL_SCM_BLOCK_DELETION_LIMIT:-500000}
+      - OZONE-SITE.XML_ozone.chunk.read.netty.ChunkedNioFile=${OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE:-false}
+      - OZONE-SITE.XML_ozone.client.verify.checksum=${OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM:-true}
     ports:
       - "${OZONE_S3G_PORT:-9878}:9878"
     command:
