@@ -90,6 +90,7 @@ services:
       - OZONE-SITE.XML_ozone.chunk.read.netty.ChunkedNioFile=${OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE:-false}
       - OZONE-SITE.XML_ozone.client.verify.checksum=${OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM:-true}
       - OZONE-SITE.XML_ozone.client.stream.readblock.enable=${OZONE_LOCAL_STREAM_READBLOCK_ENABLE:-false}
+      - OZONE-SITE.XML_hdds.container.ratis.enabled=${OZONE_LOCAL_RATIS_ENABLED:-false}
       - OZONE-SITE.XML_hdds.container.ratis.datastream.enabled=${OZONE_LOCAL_DATASTREAM_ENABLED:-false}
       - OZONE-SITE.XML_ozone.fs.datastream.auto.threshold=${OZONE_LOCAL_DATASTREAM_AUTO_THRESHOLD:-4MB}
     ports:

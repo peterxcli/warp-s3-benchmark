@@ -41,6 +41,8 @@ def test_ozone_provider_can_use_experimental_local_mode() -> None:
     assert "OZONE-SITE.XML_ozone.scm.block.size=${OZONE_LOCAL_BLOCK_SIZE:-64MB}" in script
     assert "OZONE-SITE.XML_ozone.block.deleting.service.interval=${OZONE_LOCAL_BLOCK_DELETING_INTERVAL:-1s}" in script
     assert "OZONE-SITE.XML_hdds.scm.block.deleting.service.interval=${OZONE_LOCAL_SCM_BLOCK_DELETING_INTERVAL:-1s}" in script
+    assert "OZONE-SITE.XML_hdds.container.ratis.enabled=${OZONE_LOCAL_RATIS_ENABLED:-false}" in script
+    assert "OZONE-SITE.XML_hdds.container.ratis.datastream.enabled=${OZONE_LOCAL_DATASTREAM_ENABLED:-false}" in script
     assert "ozone-local-data:/root/.ozone" in script
     assert "ozone\n      - local\n      - run" in script
     assert "OZONE_LOCAL_DATANODES:-1" in script
