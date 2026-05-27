@@ -348,7 +348,9 @@ for pid in \$(ozone_jvm_pids); do
     jfr view --width 160 container-cpu-usage \"\${recording}\" || true
   fi
 done
-tar -C /tmp -czf /tmp/${recording_name}-jfr.tgz ${recording_name}-*.jfr 2>/dev/null || true" \
+printf '\n=== JFR files ===\n'
+ls -lh /tmp/${recording_name}-*.jfr 2>/dev/null || true
+cd /tmp && tar -czf /tmp/${recording_name}-jfr.tgz ${recording_name}-*.jfr 2>/dev/null || true" \
       > "${diagnostics_dir}/${safe_container}/jfr-end.txt" 2>&1 || true
     docker cp "${container}:/tmp/${recording_name}-jfr.tgz" \
       "${diagnostics_dir}/${safe_container}/jfr-recordings.tgz" >/dev/null 2>&1 || true

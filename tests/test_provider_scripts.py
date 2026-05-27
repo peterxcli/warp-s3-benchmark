@@ -167,6 +167,7 @@ def test_ozone_profile_diagnostics_collects_per_profile_jfr_views() -> None:
     assert "JFR.start name=${recording_name}" in script
     assert "jfr view --width 160 hot-methods" in script
     assert "jfr view --width 160 allocation-by-site" in script
+    assert "cd /tmp && tar -czf" in script
     assert "jfr-recordings.tgz" in script
 
 
