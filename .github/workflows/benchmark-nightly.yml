@@ -88,6 +88,16 @@ on:
         required: false
         default: "false"
         type: string
+      ozone_local_datastream_enabled:
+        description: "Enable Ozone local Ratis datastream writes."
+        required: false
+        default: "false"
+        type: string
+      ozone_local_datastream_auto_threshold:
+        description: "Ozone local S3G datastream auto threshold."
+        required: false
+        default: 4MB
+        type: string
 
 permissions:
   contents: write
@@ -234,6 +244,8 @@ jobs:
           OZONE_LOCAL_READ_NETTY_CHUNKED_NIO_FILE: ${{ github.event.inputs.ozone_local_read_netty_chunked_nio_file || 'false' }}
           OZONE_LOCAL_CLIENT_VERIFY_CHECKSUM: ${{ github.event.inputs.ozone_local_client_verify_checksum || 'true' }}
           OZONE_LOCAL_STREAM_READBLOCK_ENABLE: ${{ github.event.inputs.ozone_local_stream_readblock_enable || 'false' }}
+          OZONE_LOCAL_DATASTREAM_ENABLED: ${{ github.event.inputs.ozone_local_datastream_enabled || 'false' }}
+          OZONE_LOCAL_DATASTREAM_AUTO_THRESHOLD: ${{ github.event.inputs.ozone_local_datastream_auto_threshold || '4MB' }}
           WARP_AUTOTERM: ${{ github.event.inputs.warp_autoterm || 'true' }}
           BENCHMARK_DIAGNOSTICS: ${{ github.event.inputs.collect_diagnostics || 'false' }}
         run: |
